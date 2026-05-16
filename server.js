@@ -1,7 +1,7 @@
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
-const MongoStore = require('connect-mongo');
+const MongoStore = require('connect-mongo').default || require('connect-mongo');
 const mongoose = require('mongoose');
 const path = require('path');
 const { marked } = require('marked');
