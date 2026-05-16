@@ -1,7 +1,8 @@
 require('dotenv').config();
 const express = require('express');
 const session = require('express-session');
-const fs = require('fs-extra');
+const MongoStore = require('connect-mongo');
+const mongoose = require('mongoose');
 const path = require('path');
 const { marked } = require('marked');
 
@@ -9,15 +10,33 @@ const app = express();
 const PORT = process.env.PORT || 3000;
 const ADMIN_PASSWORD = process.env.ADMIN_PASSWORD || 'admin123';
 const SESSION_SECRET = process.env.SESSION_SECRET || 'obsidian-web-secret';
+const MONGODB_URI = process.env.MONGODB_URI;
 
-const NOTES_DIR = path.join(__dirname, 'notes');
-const DATA_DIR = path.join(__dirname, 'data');
-const METADATA_FILE = path.join(DATA_DIR, 'metadata.json');
+// ─── MongoDB Connection ───────────────────────────────────────────────────────
+if (!MONGODB_URI) {
+  console.warn('⚠️ MONGODB_URI is not set! The app will start but database operations will fail until it is set.');
+} else {
+  mongoose.connect(MONGODB_URI)
+    .then(() => console.log('✅ Connected to MongoDB'))
+    .catch(err => console.error('❌ MongoDB connection error:', err));
+}
 
-// Ensure directories and files exist
-fs.ensureDirSync(NOTES_DIR);
-fs.ensureDirSync(DATA_DIR);
-if (!fs.existsSync(METADATA_FILE)) fs.writeJsonSync(METADATA_FILE, {});
+// ─── Mongoose Models ──────────────────────────────────────────────────────────
+const noteSchema = new mongoose.Schema({
+  path: { type: String, required: true, unique: true },
+  content: { type: String, default: '' },
+  title: { type: String },
+  visibility: { type: String, default: 'private' },
+  created: { type: Date, default: Date.now },
+  updated: { type: Date, default: Date.now }
+});
+
+const folderSchema = new mongoose.Schema({
+  path: { type: String, required: true, unique: true }
+});
+
+const Note = mongoose.model('Note', noteSchema);
+const Folder = mongoose.model('Folder', folderSchema);
 
 // Configure marked
 marked.setOptions({ gfm: true, breaks: true });
@@ -25,13 +44,13 @@ marked.setOptions({ gfm: true, breaks: true });
 // ─── Middleware ───────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
 app.use(express.static(path.join(__dirname, 'public')));
-// Serve the original theme.css from the root
 app.use('/theme.css', express.static(path.join(__dirname, 'theme.css')));
 
 app.use(session({
   secret: SESSION_SECRET,
   resave: false,
   saveUninitialized: false,
+  store: MONGODB_URI ? MongoStore.create({ mongoUrl: MONGODB_URI }) : undefined,
   cookie: { maxAge: 7 * 24 * 60 * 60 * 1000 }
 }));
 
@@ -41,48 +60,87 @@ function requireAdmin(req, res, next) {
 }
 
 // ─── Helpers ──────────────────────────────────────────────────────────────────
-function getMetadata() {
-  return fs.readJsonSync(METADATA_FILE, { throws: false }) || {};
-}
-
-function saveMetadata(meta) {
-  fs.writeJsonSync(METADATA_FILE, meta, { spaces: 2 });
-}
-
-function buildTree(dir, basePath, isAdmin) {
-  const meta = getMetadata();
-  const items = [];
-  if (!fs.existsSync(dir)) return items;
-
-  const entries = fs.readdirSync(dir, { withFileTypes: true });
-  for (const entry of entries) {
-    const rel = basePath ? `${basePath}/${entry.name}` : entry.name;
-    if (entry.name.startsWith('.')) continue;
-
-    if (entry.isDirectory()) {
-      const children = buildTree(path.join(dir, entry.name), rel, isAdmin);
-      if (isAdmin || children.length > 0) {
-        items.push({ type: 'folder', name: entry.name, path: rel, children });
+async function buildTree(isAdmin) {
+  const notes = await Note.find({}).lean();
+  const folders = await Folder.find({}).lean();
+  
+  // Create a map to hold folders and roots
+  const nodeMap = new Map();
+  const rootItems = [];
+  
+  // Ensure implicit folders exist
+  const allFolderPaths = new Set(folders.map(f => f.path));
+  for (const n of notes) {
+    const parts = n.path.split('/');
+    if (parts.length > 1) {
+      for (let i = 1; i < parts.length; i++) {
+        allFolderPaths.add(parts.slice(0, i).join('/'));
       }
-    } else if (entry.name.endsWith('.md')) {
-      const m = meta[rel] || {};
-      if (!isAdmin && m.visibility !== 'public') continue;
-      items.push({
-        type: 'note',
-        name: entry.name.replace('.md', ''),
-        path: rel,
-        title: m.title || entry.name.replace('.md', ''),
-        visibility: m.visibility || 'private',
-        created: m.created,
-        updated: m.updated
-      });
     }
   }
 
-  return items.sort((a, b) => {
-    if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
-    return a.name.localeCompare(b.name);
-  });
+  // Create folder nodes
+  const sortedFolderPaths = Array.from(allFolderPaths).sort((a, b) => a.split('/').length - b.split('/').length);
+  for (const fpath of sortedFolderPaths) {
+    const parts = fpath.split('/');
+    const name = parts[parts.length - 1];
+    const folderNode = { type: 'folder', name, path: fpath, children: [] };
+    nodeMap.set(fpath, folderNode);
+    
+    if (parts.length === 1) {
+      rootItems.push(folderNode);
+    } else {
+      const parentPath = parts.slice(0, -1).join('/');
+      const parent = nodeMap.get(parentPath);
+      if (parent) parent.children.push(folderNode);
+      else rootItems.push(folderNode); // fallback
+    }
+  }
+
+  // Add notes to the tree
+  for (const n of notes) {
+    if (!isAdmin && n.visibility !== 'public') continue;
+    
+    const parts = n.path.split('/');
+    const name = parts[parts.length - 1].replace(/\.md$/, '');
+    const noteNode = {
+      type: 'note',
+      name,
+      path: n.path,
+      title: n.title || name,
+      visibility: n.visibility || 'private',
+      created: n.created,
+      updated: n.updated
+    };
+    
+    if (parts.length === 1) {
+      rootItems.push(noteNode);
+    } else {
+      const parentPath = parts.slice(0, -1).join('/');
+      const parent = nodeMap.get(parentPath);
+      if (parent) parent.children.push(noteNode);
+      else rootItems.push(noteNode);
+    }
+  }
+
+  // Filter out empty folders for visitors
+  function pruneEmptyFolders(items) {
+    const pruned = [];
+    for (const item of items) {
+      if (item.type === 'folder') {
+        item.children = pruneEmptyFolders(item.children);
+        if (isAdmin || item.children.length > 0) pruned.push(item);
+      } else {
+        pruned.push(item);
+      }
+    }
+    return pruned.sort((a, b) => {
+      if (a.type !== b.type) return a.type === 'folder' ? -1 : 1;
+      return a.name.localeCompare(b.name);
+    });
+  }
+
+  return pruneEmptyFolders(rootItems);
 }
 
 // ─── Auth Routes ──────────────────────────────────────────────────────────────
@@ -104,146 +162,194 @@ app.get('/api/auth', (req, res) => {
 });
 
 // ─── File Tree ────────────────────────────────────────────────────────────────
-app.get('/api/tree', (req, res) => {
-  const isAdmin = !!req.session.admin;
-  res.json(buildTree(NOTES_DIR, '', isAdmin));
+app.get('/api/tree', async (req, res) => {
+  try {
+    const isAdmin = !!req.session.admin;
+    const tree = await buildTree(isAdmin);
+    res.json(tree);
+  } catch (err) {
+    console.error('Tree error:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
 });
 
 // ─── Note CRUD ────────────────────────────────────────────────────────────────
-app.get('/api/note/*', (req, res) => {
-  const notePath = req.params[0];
-  const np = notePath.endsWith('.md') ? notePath : `${notePath}.md`;
-  const filePath = path.join(NOTES_DIR, np);
-
-  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Not found' });
-
-  const meta = getMetadata();
-  const m = meta[np] || {};
-  if (!req.session.admin && m.visibility !== 'public') {
-    return res.status(403).json({ error: 'Access denied' });
+app.get('/api/note/*', async (req, res) => {
+  try {
+    const notePath = req.params[0];
+    const np = notePath.endsWith('.md') ? notePath : `${notePath}.md`;
+    
+    const note = await Note.findOne({ path: np });
+    if (!note) return res.status(404).json({ error: 'Not found' });
+    
+    if (!req.session.admin && note.visibility !== 'public') {
+      return res.status(403).json({ error: 'Access denied' });
+    }
+    
+    res.json({
+      path: note.path,
+      content: note.content,
+      title: note.title,
+      visibility: note.visibility,
+      created: note.created,
+      updated: note.updated
+    });
+  } catch (err) {
+    console.error('Get note error:', err);
+    res.status(500).json({ error: 'Internal error' });
   }
-
-  const content = fs.readFileSync(filePath, 'utf-8');
-  res.json({
-    path: np, content,
-    title: m.title || np.replace('.md', '').split('/').pop(),
-    visibility: m.visibility || 'private',
-    created: m.created, updated: m.updated
-  });
 });
 
-app.post('/api/note', requireAdmin, (req, res) => {
-  let { path: notePath, title, content = '', visibility = 'private' } = req.body;
-  const np = notePath.endsWith('.md') ? notePath : `${notePath}.md`;
-  const filePath = path.join(NOTES_DIR, np);
-
-  // Security: prevent path traversal
-  if (!filePath.startsWith(NOTES_DIR)) return res.status(400).json({ error: 'Invalid path' });
-  if (fs.existsSync(filePath)) return res.status(409).json({ error: 'Already exists' });
-
-  fs.ensureDirSync(path.dirname(filePath));
-  fs.writeFileSync(filePath, content);
-
-  const meta = getMetadata();
-  meta[np] = {
-    title: title || np.replace('.md', '').split('/').pop(),
-    visibility, created: new Date().toISOString(), updated: new Date().toISOString()
-  };
-  saveMetadata(meta);
-  res.json({ success: true, path: np });
+app.post('/api/note', requireAdmin, async (req, res) => {
+  try {
+    let { path: notePath, title, content = '', visibility = 'private' } = req.body;
+    const np = notePath.endsWith('.md') ? notePath : `${notePath}.md`;
+    
+    const existing = await Note.findOne({ path: np });
+    if (existing) return res.status(409).json({ error: 'Already exists' });
+    
+    await Note.create({
+      path: np,
+      content,
+      title: title || np.replace('.md', '').split('/').pop(),
+      visibility
+    });
+    
+    res.json({ success: true, path: np });
+  } catch (err) {
+    console.error('Create note error:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
 });
 
-app.put('/api/note/*', requireAdmin, (req, res) => {
-  const notePath = req.params[0];
-  const np = notePath.endsWith('.md') ? notePath : `${notePath}.md`;
-  const filePath = path.join(NOTES_DIR, np);
-
-  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Not found' });
-
-  const { content, title, visibility } = req.body;
-  if (content !== undefined) fs.writeFileSync(filePath, content);
-
-  const meta = getMetadata();
-  if (!meta[np]) meta[np] = { created: new Date().toISOString() };
-  if (title !== undefined) meta[np].title = title;
-  if (visibility !== undefined) meta[np].visibility = visibility;
-  meta[np].updated = new Date().toISOString();
-  saveMetadata(meta);
-  res.json({ success: true });
+app.put('/api/note/*', requireAdmin, async (req, res) => {
+  try {
+    const notePath = req.params[0];
+    const np = notePath.endsWith('.md') ? notePath : `${notePath}.md`;
+    
+    const note = await Note.findOne({ path: np });
+    if (!note) return res.status(404).json({ error: 'Not found' });
+    
+    const { content, title, visibility } = req.body;
+    if (content !== undefined) note.content = content;
+    if (title !== undefined) note.title = title;
+    if (visibility !== undefined) note.visibility = visibility;
+    note.updated = new Date();
+    
+    await note.save();
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Update note error:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
 });
 
-app.delete('/api/note/*', requireAdmin, (req, res) => {
-  const notePath = req.params[0];
-  const np = notePath.endsWith('.md') ? notePath : `${notePath}.md`;
-  const filePath = path.join(NOTES_DIR, np);
-
-  if (!fs.existsSync(filePath)) return res.status(404).json({ error: 'Not found' });
-  fs.removeSync(filePath);
-
-  const meta = getMetadata();
-  delete meta[np];
-  saveMetadata(meta);
-  res.json({ success: true });
+app.delete('/api/note/*', requireAdmin, async (req, res) => {
+  try {
+    const notePath = req.params[0];
+    const np = notePath.endsWith('.md') ? notePath : `${notePath}.md`;
+    
+    const result = await Note.deleteOne({ path: np });
+    if (result.deletedCount === 0) return res.status(404).json({ error: 'Not found' });
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete note error:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
 });
 
 // ─── Folder Routes ────────────────────────────────────────────────────────────
-app.post('/api/folder', requireAdmin, (req, res) => {
-  const { path: folderPath } = req.body;
-  const dirPath = path.join(NOTES_DIR, folderPath);
-  if (!dirPath.startsWith(NOTES_DIR)) return res.status(400).json({ error: 'Invalid path' });
-  fs.ensureDirSync(dirPath);
-  res.json({ success: true });
+app.post('/api/folder', requireAdmin, async (req, res) => {
+  try {
+    const { path: folderPath } = req.body;
+    if (!folderPath) return res.status(400).json({ error: 'Invalid path' });
+    
+    await Folder.findOneAndUpdate(
+      { path: folderPath },
+      { path: folderPath },
+      { upsert: true }
+    );
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Create folder error:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
 });
 
-app.delete('/api/folder/*', requireAdmin, (req, res) => {
-  const folderPath = req.params[0];
-  const dirPath = path.join(NOTES_DIR, folderPath);
-  if (!dirPath.startsWith(NOTES_DIR)) return res.status(400).json({ error: 'Invalid path' });
-  if (!fs.existsSync(dirPath)) return res.status(404).json({ error: 'Not found' });
-
-  // Clean up metadata for all notes in this folder
-  const meta = getMetadata();
-  const prefix = folderPath + '/';
-  Object.keys(meta).forEach(k => { if (k.startsWith(prefix) || k === folderPath) delete meta[k]; });
-  saveMetadata(meta);
-  fs.removeSync(dirPath);
-  res.json({ success: true });
+app.delete('/api/folder/*', requireAdmin, async (req, res) => {
+  try {
+    const folderPath = req.params[0];
+    const prefix = folderPath + '/';
+    
+    await Folder.deleteMany({
+      $or: [
+        { path: folderPath },
+        { path: { $regex: '^' + prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') } }
+      ]
+    });
+    
+    await Note.deleteMany({
+      path: { $regex: '^' + prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') }
+    });
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Delete folder error:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
 });
 
 // ─── Rename ───────────────────────────────────────────────────────────────────
-app.post('/api/rename', requireAdmin, (req, res) => {
-  const { oldPath, newPath, type } = req.body;
-  const isNote = type === 'note';
-  const oldNp = isNote ? (oldPath.endsWith('.md') ? oldPath : `${oldPath}.md`) : oldPath;
-  const newNp = isNote ? (newPath.endsWith('.md') ? newPath : `${newPath}.md`) : newPath;
+app.post('/api/rename', requireAdmin, async (req, res) => {
+  try {
+    const { oldPath, newPath, type } = req.body;
+    const isNote = type === 'note';
+    const oldNp = isNote ? (oldPath.endsWith('.md') ? oldPath : `${oldPath}.md`) : oldPath;
+    const newNp = isNote ? (newPath.endsWith('.md') ? newPath : `${newPath}.md`) : newPath;
 
-  const oldFull = path.join(NOTES_DIR, oldNp);
-  const newFull = path.join(NOTES_DIR, newNp);
-
-  if (!fs.existsSync(oldFull)) return res.status(404).json({ error: 'Not found' });
-  if (fs.existsSync(newFull)) return res.status(409).json({ error: 'Destination exists' });
-
-  fs.ensureDirSync(path.dirname(newFull));
-  fs.moveSync(oldFull, newFull);
-
-  if (isNote) {
-    const meta = getMetadata();
-    if (meta[oldNp]) { meta[newNp] = meta[oldNp]; delete meta[oldNp]; }
-    saveMetadata(meta);
-  } else {
-    // Move all metadata keys for folder
-    const meta = getMetadata();
-    const oldPrefix = oldNp + '/';
-    const newPrefix = newNp + '/';
-    Object.keys(meta).forEach(k => {
-      if (k.startsWith(oldPrefix)) {
-        meta[k.replace(oldPrefix, newPrefix)] = meta[k];
-        delete meta[k];
+    if (isNote) {
+      const existing = await Note.findOne({ path: newNp });
+      if (existing) return res.status(409).json({ error: 'Destination exists' });
+      
+      const note = await Note.findOne({ path: oldNp });
+      if (!note) return res.status(404).json({ error: 'Not found' });
+      
+      note.path = newNp;
+      await note.save();
+    } else {
+      // It's a folder, cascade rename
+      const oldPrefix = oldNp + '/';
+      const newPrefix = newNp + '/';
+      const oldRegex = new RegExp('^' + oldPrefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&'));
+      
+      // Update Notes
+      const notesToUpdate = await Note.find({ path: oldRegex });
+      for (const note of notesToUpdate) {
+        note.path = note.path.replace(oldRegex, newPrefix);
+        await note.save();
       }
-    });
-    saveMetadata(meta);
+      
+      // Update Folders
+      const foldersToUpdate = await Folder.find({ path: oldRegex });
+      for (const folder of foldersToUpdate) {
+        folder.path = folder.path.replace(oldRegex, newPrefix);
+        await folder.save();
+      }
+      
+      // Rename the exact folder if it exists
+      const exactFolder = await Folder.findOne({ path: oldNp });
+      if (exactFolder) {
+        exactFolder.path = newNp;
+        await exactFolder.save();
+      }
+    }
+    
+    res.json({ success: true });
+  } catch (err) {
+    console.error('Rename error:', err);
+    res.status(500).json({ error: 'Internal error' });
   }
-  res.json({ success: true });
 });
 
 // ─── Markdown render ─────────────────────────────────────────────────────────
