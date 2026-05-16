@@ -562,7 +562,7 @@ body.theme-dark .note-body h5, body.theme-dark .note-body h6 {
   color: #E27B70; /* Brighter version of #B0483D for dark mode contrast */
 }
 .note-body strong, .note-body b {
-  color: var(--text-normal);
+  color: #b0483d;
   filter: brightness(1.2);
 }
 .note-body em, .note-body i {
