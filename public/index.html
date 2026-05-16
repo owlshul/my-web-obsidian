@@ -1,0 +1,82 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1.0">
+  <title>My Notes</title>
+  <meta name="description" content="Personal knowledge base — public notes.">
+  <link rel="stylesheet" href="/css/primary-web.css">
+  <link rel="stylesheet" href="/css/app.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
+</head>
+<body class="theme-light">
+
+<div id="app">
+  <!-- Sidebar -->
+  <aside class="sidebar" id="sidebar">
+    <div class="sidebar-header">
+      <a href="/" class="sidebar-logo">
+        <div class="logo-icon"><i data-lucide="leaf"></i></div>
+        <span id="siteTitle">My Notes</span>
+      </a>
+      <div class="sidebar-actions">
+        <button class="btn-icon" id="toggleTheme" title="Toggle theme"><i data-lucide="sun"></i></button>
+      </div>
+    </div>
+
+    <div class="sidebar-search">
+      <div style="position:relative;display:flex;align-items:center;">
+        <i data-lucide="search" style="position:absolute;left:8px;width:14px;height:14px;color:var(--text-faint);"></i>
+        <input type="search" id="searchInput" placeholder="Search notes…" autocomplete="off" style="padding-left:28px;width:100%;">
+      </div>
+    </div>
+
+    <div class="file-tree" id="fileTree">
+      <div class="tree-empty" style="padding-top:2rem">
+        <div style="display:flex;justify-content:center;margin-bottom:.5rem;color:var(--text-faint)"><i data-lucide="sprout" style="width:32px;height:32px;"></i></div>
+        Loading notes…
+      </div>
+    </div>
+
+    <div style="padding:.75rem;border-top:1px solid var(--border);font-size:.72rem;color:var(--text-faint);display:flex;align-items:center;justify-content:space-between">
+      <span>Public notes</span>
+      <a href="/login" style="color:var(--text-faint);font-size:.7rem;display:flex;align-items:center;gap:4px;">Admin <i data-lucide="external-link" style="width:12px;height:12px;"></i></a>
+    </div>
+  </aside>
+
+  <div class="resizer" id="leftResizer"></div>
+
+  <!-- Main -->
+  <main class="main" id="mainArea">
+    <div class="topbar">
+      <button class="btn-icon topbar-toggle" id="sidebarToggle" title="Toggle sidebar"><i data-lucide="menu"></i></button>
+      <div class="breadcrumb" id="breadcrumb">
+        <a href="/">Home</a>
+      </div>
+      <div class="topbar-right">
+        <button class="btn-icon topbar-toggle" id="rightSidebarToggle" title="Toggle outline"><i data-lucide="panel-right"></i></button>
+      </div>
+    </div>
+
+    <div class="content-wrapper">
+      <div class="content-pane" id="contentPane">
+        <div class="welcome fade-in">
+          <div class="welcome-logo"><i data-lucide="leaf"></i></div>
+          <h2>Welcome to My Notes</h2>
+          <p>Select a note from the sidebar to start reading.</p>
+        </div>
+      </div>
+      <div class="resizer" id="rightResizer" style="display:none;"></div>
+      <aside class="sidebar-right hidden" id="outlinePane">
+        <div class="outline-title">Outline</div>
+        <ul class="outline-list" id="outlineList"></ul>
+      </aside>
+    </div>
+  </main>
+</div>
+
+<div class="toast-wrap" id="toastWrap"></div>
+
+<script src="/js/visitor.js"></script>
+</body>
+</html>

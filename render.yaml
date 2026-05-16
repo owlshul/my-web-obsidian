@@ -1,0 +1,17 @@
+services:
+  - type: web
+    name: my-notes
+    env: node
+    buildCommand: npm install
+    startCommand: node server.js
+    envVars:
+      - key: ADMIN_PASSWORD
+        sync: false          # set in Render dashboard
+      - key: SESSION_SECRET
+        generateValue: true  # auto-generated
+      - key: NODE_ENV
+        value: production
+    disk:
+      name: notes-data
+      mountPath: /opt/render/project/src
+      sizeGB: 1

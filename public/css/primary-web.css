@@ -1,0 +1,390 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   PRIMARY THEME — Faithful Web Adaptation
+   ✦ P R I M A R Y ✦ by Cecilia May — adapted for web use
+   
+   Colors extracted directly from the Primary theme's Style Settings:
+   • Light: warm paper / yellowing magazine pages
+   • Dark:  warm dark backgrounds with nostalgic warmth
+   • Accent: functional pop of red, blue, yellow (Bauhaus/Scandinavian)
+───────────────────────────────────────────────────────────────────────────── */
+
+/* Load Cascadia Code from theme.css (base64 embedded, served by our server) */
+@import url('/theme.css');
+
+/* UI & prose fonts from Google Fonts */
+@import url('https://fonts.googleapis.com/css2?family=Playfair+Display:ital,wght@0,500;0,600;0,700;1,600&family=Inter:wght@300;400;500;600&family=Source+Serif+4:ital,opsz,wght@0,8..60,400;0,8..60,600;1,8..60,400&display=swap');
+
+/* ─── Primary Theme Color Tokens ─────────────────────────────────────────── */
+/* These values are taken directly from Primary's default-light/dark values   */
+
+:root {
+  /* ── Primary palette — Bauhaus R/B/Y ── */
+  --primary-red:    hsla(4,   72%, 55%, 1);   /* Folder 1 / graph tags */
+  --primary-orange: hsla(18,  69%, 50%, 1);   /* Folder 2 */
+  --primary-yellow: hsla(35,  90%, 40%, 1);   /* Folder 3 / star */
+  --primary-green:  hsla(160, 40%, 45%, 1);   /* Checkbox checked */
+  --primary-teal:   hsla(178, 29%, 45%, 1);   /* Info */
+  --primary-blue:   hsla(200, 64%, 37%, 1);   /* Folder 5 / graph nodes */
+  --primary-purple: hsla(275, 37%, 43%, 1);   /* Folder 6 */
+
+  /* ── Accent (interactive) — warm gold/yellow (darker for legibility) ── */
+  --accent:         hsla(35,  85%, 42%, 1);   /* graph unresolved, star */
+  --accent-hover:   hsla(35,  85%, 35%, 1);
+
+  /* ─────────────────── LIGHT THEME ─────────────────── */
+  /* Backgrounds — warm paper, yellowing magazine pages */
+  --bg-primary:     hsl(36,  38%, 98%);       /* checklist bg: hsla(36,38%,98%,1) */
+  --bg-secondary:   hsl(37,  38%, 93%);       /* warm off-white */
+  --bg-tertiary:    hsl(35,  28%, 88%);       /* slightly darker warm */
+  --bg-sidebar:     hsl(34,  25%, 91%);       /* sidebar warm */
+  --bg-hover:       hsl(34,  29%, 83%);
+  --bg-active:      hsla(43, 83%, 57%, 0.14);
+
+  /* Text — warm dark brown tones */
+  --text-normal:    hsl(31,  23%, 22%);       /* primary reading text */
+  --text-muted:     hsl(34,  29%, 45%);       /* graph text: hsla(34,29%,60%) */
+  --text-faint:     hsl(34,  29%, 60%);       /* list marker: hsla(34,29%,60%) */
+
+  /* Borders */
+  --border:         hsl(37,  38%, 83%);       /* graph line: hsla(37,38%,83%) */
+  --border-strong:  hsl(34,  29%, 70%);
+
+  /* Links */
+  --link:           hsl(200, 64%, 37%);       /* folder 5 blue */
+  --link-hover:     hsl(40,  98%, 36%);
+
+  /* Code */
+  --code-bg:        hsl(34,  25%, 91%);
+  --code-tx:        hsl(4,   72%, 45%);
+
+  /* Special */
+  --shadow-sm:  0 1px 3px hsla(31,23%,20%,.08);
+  --shadow-md:  0 4px 12px hsla(31,23%,20%,.12);
+  --shadow-lg:  0 8px 28px hsla(31,23%,20%,.16);
+  --scrollbar:  hsl(34, 29%, 72%);
+
+  /* Glassmorphism */
+  --glass-bg: hsla(36, 38%, 98%, 0.75);
+  --glass-border: hsla(37, 38%, 83%, 0.6);
+  --glass-blur: 16px;
+}
+
+/* ─── Dark Theme ──────────────────────────────────────────────────────────── */
+body.theme-dark {
+  /* Backgrounds — warm dark, not cold */
+  --bg-primary:     hsl(30,  10%, 11%);       /* warm very dark */
+  --bg-secondary:   hsl(28,  12%, 14%);
+  --bg-tertiary:    hsl(28,  11%, 17%);
+  --bg-sidebar:     hsl(29,  13%, 9%);
+  --bg-hover:       hsl(28,  12%, 19%);
+  --bg-active:      hsla(43, 83%, 57%, 0.10);
+
+  /* Text */
+  --text-normal:    hsl(34,  39%, 74%);       /* graph focused: hsla(34,39%,74%) */
+  --text-muted:     hsl(28,  22%, 48%);
+  --text-faint:     hsl(28,  22%, 35%);
+
+  /* Borders */
+  --border:         hsl(28,  12%, 22%);
+  --border-strong:  hsl(28,  12%, 28%);
+
+  /* Links */
+  --link:           hsl(194, 59%, 56%);       /* folder 5 dark: hsla(194,59%,56%) */
+  --link-hover:     hsla(42, 79%, 51%, 1);    /* folder 3 dark: hsla(42,79%,51%) */
+
+  /* Code */
+  --code-bg:        hsl(28,  12%, 17%);
+  --code-tx:        hsl(4,   88%, 61%);       /* folder 1 dark: hsla(4,88%,61%) */
+
+  /* Accent override for dark */
+  --accent:         hsla(42,  79%, 51%, 1);
+  --accent-hover:   hsla(43,  83%, 57%, 1);
+
+  /* Primary accent colors — dark variants */
+  --primary-red:    hsla(4,   88%, 61%, 1);
+  --primary-orange: hsla(24,  84%, 50%, 1);
+  --primary-yellow: hsla(42,  79%, 51%, 1);
+  --primary-green:  hsla(160, 50%, 55%, 1);
+  --primary-teal:   hsla(178, 31%, 41%, 1);
+  --primary-blue:   hsla(194, 59%, 56%, 1);
+  --primary-purple: hsla(242, 52%, 69%, 1);
+
+  --shadow-sm:  0 1px 3px hsla(0,0%,0%,.25);
+  --shadow-md:  0 4px 12px hsla(0,0%,0%,.35);
+  --shadow-lg:  0 8px 28px hsla(0,0%,0%,.45);
+  --scrollbar:  hsl(28, 12%, 28%);
+
+  /* Glassmorphism Dark */
+  --glass-bg: hsla(30, 10%, 11%, 0.75);
+  --glass-border: hsla(28, 12%, 22%, 0.6);
+}
+
+/* ─── Layout Tokens ──────────────────────────────────────────────────────── */
+:root {
+  --sidebar-w:  260px;
+  --topbar-h:   48px;
+  --radius-sm:  4px;
+  --radius-md:  8px;
+  --radius-lg:  12px;
+
+  /* Typography */
+  --font-ui:      'Inter', system-ui, -apple-system, sans-serif;
+  --font-text:    'Source Serif 4', Georgia, 'Times New Roman', serif;
+  --font-heading: 'Playfair Display', Georgia, serif;
+  /* Cascadia Code is loaded from /theme.css (base64 @font-face) */
+  --font-mono:    'Cascadia Code', 'JetBrains Mono', 'Fira Code', monospace;
+  /* Enable the same font features as in Obsidian's Primary theme */
+  --font-mono-features: "calt" on, "ss02", "ss19";
+
+  /* Serve the original Cascadia Code from theme.css */
+}
+
+/* ─── Reset ──────────────────────────────────────────────────────────────── */
+*, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
+
+html { font-size: 16px; }
+
+body {
+  font-family: var(--font-ui);
+  background: var(--bg-primary);
+  color: var(--text-normal);
+  line-height: 1.65;
+  -webkit-font-smoothing: antialiased;
+  transition: background .15s, color .15s;
+}
+
+::-webkit-scrollbar { width: 5px; height: 5px; }
+::-webkit-scrollbar-track { background: transparent; }
+::-webkit-scrollbar-thumb { background: var(--scrollbar); border-radius: 99px; }
+::-webkit-scrollbar-thumb:hover { background: var(--accent); }
+
+/* ─── Cascade Code font from theme.css ───────────────────────────────────── */
+/* We serve theme.css from the server and rely on its @font-face for Cascadia Code */
+
+/* ─── Base Typography ────────────────────────────────────────────────────── */
+h1, h2, h3, h4, h5, h6 {
+  font-family: var(--font-ui);
+  line-height: 1.3;
+  font-weight: 700;
+  margin-top: 1.5rem;
+}
+h1 { font-size: 2rem; margin-bottom: 1rem; color: var(--primary-red); }
+h2 { font-size: 1.6rem; margin-bottom: .8rem; color: var(--primary-orange);
+     border-bottom: 1px solid var(--border); padding-bottom: .3rem; }
+h3 { font-size: 1.3rem; margin-bottom: .6rem; color: var(--primary-yellow); }
+h4 { font-size: 1.1rem; margin-bottom: .5rem; color: var(--primary-green); }
+h5 { font-size: 1rem; margin-bottom: .4rem; color: var(--primary-blue); }
+h6 { font-size: .95rem; margin-bottom: .4rem; color: var(--primary-purple); }
+
+p { margin-bottom: 1em; font-family: var(--font-ui); font-size: 1rem; line-height: 1.7; color: var(--text-normal); }
+
+a { color: var(--link); text-decoration: none; transition: color .12s; font-family: var(--font-ui); }
+a:hover { color: var(--link-hover); text-decoration: underline; }
+
+strong { font-weight: 700; color: var(--text-normal); }
+em { font-style: italic; color: var(--accent); }
+del { text-decoration: line-through; opacity: .65; }
+
+/* ─── Code ───────────────────────────────────────────────────────────────── */
+code {
+  font-family: var(--font-mono);
+  font-size: .875em;
+  background: var(--code-bg);
+  color: var(--code-tx);
+  padding: .15em .4em;
+  border-radius: var(--radius-sm);
+  /* Cascadia Code ligature features (same as Obsidian's Primary theme) */
+  font-feature-settings: "calt" on, "ss02", "ss19";
+}
+
+pre {
+  background: var(--bg-tertiary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  padding: 1rem 1.25rem;
+  overflow-x: auto;
+  margin-bottom: 1.1rem;
+}
+pre code {
+  background: none; color: var(--text-normal);
+  padding: 0; font-size: .875rem; line-height: 1.75;
+}
+
+/* ─── Blockquotes ────────────────────────────────────────────────────────── */
+blockquote {
+  border-left: 3px solid var(--accent);
+  background: var(--bg-secondary);
+  padding: .75rem 1rem;
+  border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
+  color: var(--text-muted);
+  margin-bottom: 1rem;
+  font-style: italic;
+  font-family: var(--font-text);
+}
+
+/* ─── Callouts (Obsidian-style > [!TYPE]) ────────────────────────────────── */
+.callout {
+  border-radius: var(--radius-md);
+  padding: .8rem 1rem;
+  margin-bottom: 1rem;
+  border-left: 4px solid;
+}
+.callout-title {
+  font-family: var(--font-ui);
+  font-weight: 600;
+  font-size: .82rem;
+  text-transform: uppercase;
+  letter-spacing: .07em;
+  margin-bottom: .4rem;
+  display: flex;
+  align-items: center;
+  gap: .4rem;
+}
+.callout-content { font-family: var(--font-text); font-size: .97rem; }
+
+/* Callout type colors using Primary palette */
+.callout-note, .callout-info {
+  background: hsla(200, 64%, 37%, .08);
+  border-color: var(--primary-blue);
+}
+.callout-note .callout-title, .callout-info .callout-title { color: var(--primary-blue); }
+
+.callout-tip, .callout-success {
+  background: hsla(149, 50%, 39%, .08);
+  border-color: var(--primary-green);
+}
+.callout-tip .callout-title, .callout-success .callout-title { color: var(--primary-green); }
+
+.callout-warning, .callout-caution {
+  background: hsla(43, 83%, 57%, .10);
+  border-color: var(--accent);
+}
+.callout-warning .callout-title, .callout-caution .callout-title { color: var(--primary-yellow); }
+
+.callout-danger, .callout-important, .callout-error {
+  background: hsla(4, 72%, 55%, .08);
+  border-color: var(--primary-red);
+}
+.callout-danger .callout-title, .callout-important .callout-title, .callout-error .callout-title {
+  color: var(--primary-red);
+}
+
+body.theme-dark .callout-note, body.theme-dark .callout-info { background: hsla(194,59%,56%,.08); border-color: var(--primary-blue); }
+body.theme-dark .callout-tip, body.theme-dark .callout-success { background: hsla(154,75%,26%,.12); border-color: var(--primary-green); }
+body.theme-dark .callout-warning, body.theme-dark .callout-caution { background: hsla(42,79%,51%,.10); border-color: var(--accent); }
+body.theme-dark .callout-danger, body.theme-dark .callout-important, body.theme-dark .callout-error { background: hsla(4,88%,61%,.10); border-color: var(--primary-red); }
+
+/* ─── Lists ──────────────────────────────────────────────────────────────── */
+ul, ol { padding-left: 1.5rem; margin-bottom: 1rem; font-family: var(--font-text); }
+li { margin-bottom: .3rem; }
+li > ul, li > ol { margin-top: .25rem; margin-bottom: 0; }
+
+/* List markers in Primary accent color */
+ul li::marker { color: hsla(34, 29%, 60%, 1); }
+body.theme-dark ul li::marker { color: hsla(34, 24%, 40%, 1); }
+
+/* ─── Tables ─────────────────────────────────────────────────────────────── */
+table { width: 100%; border-collapse: collapse; margin-bottom: 1rem; font-size: .93rem; }
+th { background: var(--bg-secondary); font-weight: 600; text-align: left; font-family: var(--font-ui); }
+th, td { padding: .5rem .75rem; border: 1px solid var(--border); }
+tr:nth-child(even) { background: var(--bg-secondary); }
+
+/* ─── HR ─────────────────────────────────────────────────────────────────── */
+hr { border: none; border-top: 2px solid var(--border); margin: 1.5rem 0; }
+
+/* ─── Buttons ─────────────────────────────────────────────────────────────── */
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: .4rem;
+  padding: .45rem .9rem;
+  border-radius: var(--radius-sm);
+  font-family: var(--font-ui);
+  font-size: .875rem;
+  font-weight: 500;
+  cursor: pointer;
+  border: none;
+  transition: background .12s, transform .08s, box-shadow .12s;
+  white-space: nowrap;
+  line-height: 1;
+}
+.btn:active { transform: scale(.97); }
+
+.btn-primary {
+  background: var(--accent);
+  color: hsl(31, 45%, 12%);
+  font-weight: 600;
+}
+.btn-primary:hover {
+  background: var(--accent-hover);
+  box-shadow: var(--shadow-sm);
+}
+
+.btn-ghost {
+  background: transparent;
+  color: var(--text-muted);
+  border: 1px solid var(--border);
+}
+.btn-ghost:hover { background: var(--bg-secondary); color: var(--text-normal); }
+
+.btn-danger {
+  background: transparent;
+  color: var(--primary-red);
+  border: 1px solid hsla(4, 72%, 55%, .3);
+}
+.btn-danger:hover { background: hsla(4, 72%, 55%, .08); }
+
+.btn-icon {
+  width: 26px; height: 26px;
+  padding: 0;
+  display: flex; align-items: center; justify-content: center;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  color: var(--text-muted);
+  border: none;
+  cursor: pointer;
+  font-size: 0.9rem;
+  transition: background .12s, color .12s;
+}
+.btn-icon:hover { background: var(--bg-secondary); color: var(--text-normal); }
+
+/* ─── Badges ──────────────────────────────────────────────────────────────── */
+.badge {
+  display: inline-flex; align-items: center; gap: .25rem;
+  padding: .15rem .5rem;
+  border-radius: 99px;
+  font-size: .7rem; font-weight: 600; letter-spacing: .04em; text-transform: uppercase;
+  font-family: var(--font-ui);
+}
+.badge-public  { background: hsla(149, 50%, 39%, .12); color: var(--primary-green); }
+.badge-private { background: hsla(34, 29%, 60%, .12);  color: var(--text-muted); }
+
+/* ─── Inputs ──────────────────────────────────────────────────────────────── */
+input[type="text"],
+input[type="password"],
+input[type="search"],
+select {
+  font-family: var(--font-ui);
+  font-size: .875rem;
+  background: var(--bg-secondary);
+  color: var(--text-normal);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-sm);
+  padding: .5rem .75rem;
+  outline: none;
+  transition: border-color .12s, box-shadow .12s;
+  width: 100%;
+}
+input:focus, select:focus {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 3px hsla(43, 83%, 57%, .18);
+}
+
+/* ─── Animations ──────────────────────────────────────────────────────────── */
+@keyframes fadeIn  { from { opacity:0; transform:translateY(5px); } to { opacity:1; transform:none; } }
+@keyframes slideIn { from { opacity:0; transform:translateX(-8px); } to { opacity:1; transform:none; } }
+@keyframes spin    { to { transform:rotate(360deg); } }
+@keyframes pulse   { 0%,100% { opacity:1; } 50% { opacity:.45; } }
+
+.fade-in  { animation: fadeIn  .2s ease forwards; }
+.slide-in { animation: slideIn .18s ease forwards; }
