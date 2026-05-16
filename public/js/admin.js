@@ -118,7 +118,7 @@ async function handleDropMove(data, targetFolder) {
     const msg = await res.json();
     if (!res.ok) throw new Error(msg.error || 'Failed to move');
     
-    showToast('Moved successfully', 'success');
+    toast('Moved successfully', 'success');
     loadTree();
     
     if (type === 'note' && currentNote && currentNote.path === (oldPath.endsWith('.md') ? oldPath : oldPath + '.md')) {
@@ -127,7 +127,7 @@ async function handleDropMove(data, targetFolder) {
       document.getElementById('noteTitleInput').dataset.originalPath = newNp;
     }
   } catch (err) {
-    showToast(err.message || 'Failed to move', 'error');
+    toast(err.message || 'Failed to move', 'error');
   }
 }
 
@@ -148,7 +148,9 @@ document.addEventListener('DOMContentLoaded', () => {
     try {
       const data = JSON.parse(e.dataTransfer.getData('text/plain'));
       handleDropMove(data, ''); // empty target folder = root
-    } catch(err) {}
+    } catch(err) {
+      console.error('FileTree drop error:', err);
+    }
   });
 });
 
@@ -219,7 +221,9 @@ function buildFolder(folder) {
     try {
       const data = JSON.parse(e.dataTransfer.getData('text/plain'));
       handleDropMove(data, folder.path);
-    } catch(err) {}
+    } catch(err) {
+      console.error('Folder drop error:', err);
+    }
   });
 
   el.appendChild(header);
