@@ -831,3 +831,49 @@ function initResizers() {
     rightResizer?.classList.remove('dragging');
   });
 }
+
+// ─── Modals ───────────────────────────────────────────────────────────────────
+function initModals() {
+  const overlay = document.getElementById('modalOverlay');
+  const cancelBtn = document.getElementById('modalCancel');
+  
+  overlay?.addEventListener('click', (e) => {
+    if (e.target.id === 'modalOverlay') {
+      overlay.style.display = 'none';
+    }
+  });
+  
+  cancelBtn?.addEventListener('click', () => {
+    if (overlay) overlay.style.display = 'none';
+  });
+  
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (overlay) overlay.style.display = 'none';
+      if (typeof closeCtxMenu === 'function') closeCtxMenu();
+    }
+  });
+}
+
+// ─── Editor ───────────────────────────────────────────────────────────────────
+function initEditor() {
+  const cmWrap = document.getElementById('editorCmWrap');
+  if (!cmWrap) return;
+  
+  editorView = createEditor(cmWrap, '', (update) => {
+    if (update.docChanged) {
+      if (typeof handleEditorEvent === 'function') {
+        handleEditorEvent('change');
+      }
+    }
+  });
+  
+  document.querySelectorAll('.toolbar-btn').forEach(btn => {
+    btn.addEventListener('click', () => {
+      const action = btn.dataset.action;
+      if (action) {
+        applyToolbarAction(editorView, action);
+      }
+    });
+  });
+}
