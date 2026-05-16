@@ -557,7 +557,7 @@ body.theme-dark .login-page {
   color: #B0483D;
 }
 .note-body strong, .note-body b {
-  color: var(--text-normal);
+  color: hsl(5.7, 48.5%, 46.5%);
   filter: brightness(1.2);
 }
 .note-body em, .note-body i {
