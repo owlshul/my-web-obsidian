@@ -552,10 +552,13 @@ body.theme-dark .login-page {
   margin-bottom: 1.2rem;
   line-height: 1.6;
 }
-.note-body strong, .note-body b, 
 .note-body h1, .note-body h2, .note-body h3, 
 .note-body h4, .note-body h5, .note-body h6 {
   color: #B0483D;
+}
+.note-body strong, .note-body b {
+  color: var(--text-normal);
+  filter: brightness(1.2);
 }
 .note-body em, .note-body i {
   color: #3B7197;
