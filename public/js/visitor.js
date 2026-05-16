@@ -307,7 +307,12 @@ function renderMarkdown(md) {
     }
   );
 
-  // Simple markdown → HTML (no external lib needed for basic rendering)
+  // If marked library is available (via CDN), use it for perfect markdown rendering (including lists and newlines)
+  if (typeof marked !== 'undefined') {
+    return marked.parse(md, { gfm: true, breaks: true });
+  }
+
+  // Simple markdown → HTML fallback (no external lib needed for basic rendering)
   // Headings
   md = md.replace(/^(#{1,6})\s+(.+)$/gm, (_, hashes, text) => {
     const level = hashes.length;
