@@ -215,7 +215,7 @@ async function openNote(notePath) {
     pane.appendChild(divider);
     pane.appendChild(body);
 
-    updateOutline(note.content);
+    updateOutline(body);
 
     // Update page title
     document.title = `${note.title || note.name} — My Notes`;
@@ -245,22 +245,12 @@ function showWelcome() {
   if (outlinePane) outlinePane.classList.add('hidden');
 }
 
-function updateOutline(md) {
+function updateOutline(container) {
   const outlinePane = document.getElementById('outlinePane');
   const outlineList = document.getElementById('outlineList');
   if (!outlinePane || !outlineList) return;
 
-  const headings = [];
-  const regex = /^(#{1,6})\s+(.+)$/gm;
-  let match;
-  while ((match = regex.exec(md)) !== null) {
-    const cleanText = match[2].replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/[*_~`]/g, '');
-    headings.push({
-      level: match[1].length,
-      text: cleanText,
-      id: 'h-' + cleanText.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '')
-    });
-  }
+  const headings = Array.from(container.querySelectorAll('h1, h2, h3, h4, h5, h6'));
 
   if (headings.length === 0) {
     outlinePane.classList.add('hidden');
@@ -270,21 +260,19 @@ function updateOutline(md) {
   outlinePane.classList.remove('hidden');
   outlineList.innerHTML = '';
   headings.forEach(h => {
+    const level = parseInt(h.tagName.substring(1));
     const li = document.createElement('li');
     li.className = 'outline-item';
     const a = document.createElement('a');
-    a.className = `outline-link outline-level-${h.level}`;
+    a.className = `outline-link outline-level-${level}`;
     a.href = `#${h.id}`;
-    a.textContent = h.text;
+    a.textContent = h.textContent;
     
     a.addEventListener('click', e => {
       e.preventDefault();
-      const target = document.getElementById(h.id);
-      if (target) {
-        target.scrollIntoView({ behavior: 'smooth' });
-        document.querySelectorAll('.outline-link').forEach(l => l.classList.remove('active'));
-        a.classList.add('active');
-      }
+      h.scrollIntoView({ behavior: 'smooth' });
+      document.querySelectorAll('.outline-link').forEach(l => l.classList.remove('active'));
+      a.classList.add('active');
     });
 
     li.appendChild(a);
