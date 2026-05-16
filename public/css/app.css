@@ -556,8 +556,13 @@ body.theme-dark .login-page {
 .note-body h4, .note-body h5, .note-body h6 {
   color: #B0483D;
 }
+body.theme-dark .note-body h1, body.theme-dark .note-body h2, 
+body.theme-dark .note-body h3, body.theme-dark .note-body h4, 
+body.theme-dark .note-body h5, body.theme-dark .note-body h6 {
+  color: #E27B70; /* Brighter version of #B0483D for dark mode contrast */
+}
 .note-body strong, .note-body b {
-  color: hsl(5.7, 48.5%, 46.5%);
+  color: var(--text-normal);
   filter: brightness(1.2);
 }
 .note-body em, .note-body i {
