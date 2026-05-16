@@ -1,5 +1,6 @@
 <!DOCTYPE html>
 <html lang="en">
+
 <head>
   <meta charset="UTF-8">
   <meta name="viewport" content="width=device-width, initial-scale=1.0">
@@ -7,79 +8,90 @@
   <meta name="description" content="Admin login for the personal notes publishing system.">
   <link rel="stylesheet" href="/css/primary-web.css">
   <link rel="stylesheet" href="/css/app.css">
-  <link rel="icon" type="image/png" href="/favicon.png">
   <style>
-    .login-card .btn-primary { width: 100%; justify-content: center; padding: .6rem; font-size: .95rem; }
-    input[type="password"] { font-size: 1rem; letter-spacing: .08em; }
-  </style>
-</head>
-<body class="theme-dark">
-<div class="login-page">
-  <div class="login-card">
-    <div class="login-logo">
-      <div class="icon">🌿</div>
-      <div>
-        <h1>My Notes</h1>
-        <p>Admin access</p>
-      </div>
-    </div>
-
-    <form id="loginForm">
-      <div class="form-group">
-        <label for="password">Password</label>
-        <input type="password" id="password" placeholder="Enter admin password" autofocus autocomplete="current-password">
-      </div>
-      <button type="submit" class="btn btn-primary" id="loginBtn">
-        <span id="btnText">Sign In</span>
-      </button>
-      <div class="login-error" id="loginError" style="display:none"></div>
-    </form>
-
-    <div style="margin-top:1.5rem;text-align:center">
-      <a href="/" style="font-size:.8rem;color:var(--tx-3)">← Back to public notes</a>
-    </div>
-  </div>
-</div>
-
-<script>
-  // Check if already logged in
-  fetch('/api/auth').then(r => r.json()).then(d => {
-    if (d.admin) window.location.href = '/admin';
-  });
-
-  document.getElementById('loginForm').addEventListener('submit', async e => {
-    e.preventDefault();
-    const btn = document.getElementById('loginBtn');
-    const err = document.getElementById('loginError');
-    const pw  = document.getElementById('password').value;
-
-    btn.disabled = true;
-    document.getElementById('btnText').textContent = 'Signing in…';
-    err.style.display = 'none';
-
-    try {
-      const res = await fetch('/api/login', {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ password: pw })
-      });
-      const data = await res.json();
-      if (res.ok) {
-        window.location.href = '/admin';
-      } else {
-        err.textContent = data.error || 'Invalid password';
-        err.style.display = 'block';
-        document.getElementById('password').value = '';
-        document.getElementById('password').focus();
-      }
-    } catch {
-      err.textContent = 'Connection error. Is the server running?';
-      err.style.display = 'block';
+    .login-card .btn-primary {
+      width: 100%;
+      justify-content: center;
+      padding: .6rem;
+      font-size: .95rem;
     }
 
-    btn.disabled = false;
-    document.getElementById('btnText').textContent = 'Sign In';
-  });
-</script>
+    input[type="password"] {
+      font-size: 1rem;
+      letter-spacing: .08em;
+    }
+  </style>
+</head>
+
+<body class="theme-dark">
+  <div class="login-page">
+    <div class="login-card">
+      <div class="login-logo">
+        <div class="icon">🌿</div>
+        <div>
+          <h1>My Notes</h1>
+          <p>Admin access</p>
+        </div>
+      </div>
+
+      <form id="loginForm">
+        <div class="form-group">
+          <label for="password">Password</label>
+          <input type="password" id="password" placeholder="Enter admin password" autofocus
+            autocomplete="current-password">
+        </div>
+        <button type="submit" class="btn btn-primary" id="loginBtn">
+          <span id="btnText">Sign In</span>
+        </button>
+        <div class="login-error" id="loginError" style="display:none"></div>
+      </form>
+
+      <div style="margin-top:1.5rem;text-align:center">
+        <a href="/" style="font-size:.8rem;color:var(--tx-3)">← Back to public notes</a>
+      </div>
+    </div>
+  </div>
+
+  <script>
+    // Check if already logged in
+    fetch('/api/auth').then(r => r.json()).then(d => {
+      if (d.admin) window.location.href = '/admin';
+    });
+
+    document.getElementById('loginForm').addEventListener('submit', async e => {
+      e.preventDefault();
+      const btn = document.getElementById('loginBtn');
+      const err = document.getElementById('loginError');
+      const pw = document.getElementById('password').value;
+
+      btn.disabled = true;
+      document.getElementById('btnText').textContent = 'Signing in…';
+      err.style.display = 'none';
+
+      try {
+        const res = await fetch('/api/login', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ password: pw })
+        });
+        const data = await res.json();
+        if (res.ok) {
+          window.location.href = '/admin';
+        } else {
+          err.textContent = data.error || 'Invalid password';
+          err.style.display = 'block';
+          document.getElementById('password').value = '';
+          document.getElementById('password').focus();
+        }
+      } catch {
+        err.textContent = 'Connection error. Is the server running?';
+        err.style.display = 'block';
+      }
+
+      btn.disabled = false;
+      document.getElementById('btnText').textContent = 'Sign In';
+    });
+  </script>
 </body>
+
 </html>
