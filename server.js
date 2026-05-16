@@ -365,9 +365,14 @@ app.get('/note/*', (req, res) => res.sendFile(path.join(__dirname, 'public', 'in
 app.get('/', (req, res) => res.sendFile(path.join(__dirname, 'public', 'index.html')));
 
 // ─── Start ────────────────────────────────────────────────────────────────────
-app.listen(PORT, () => {
-  console.log(`\n🌿 Obsidian-for-Web`);
-  console.log(`   Visitor: http://localhost:${PORT}`);
-  console.log(`   Admin:   http://localhost:${PORT}/admin`);
-  console.log(`   Password: ${ADMIN_PASSWORD}\n`);
-});
+if (process.env.VERCEL) {
+  // Export the app for Vercel serverless handler
+  module.exports = app;
+} else {
+  app.listen(PORT, () => {
+    console.log(`\n🌿 Obsidian-for-Web`);
+    console.log(`   Visitor: http://localhost:${PORT}`);
+    console.log(`   Admin:   http://localhost:${PORT}/admin`);
+    console.log(`   Password: ${ADMIN_PASSWORD}\n`);
+  });
+}
