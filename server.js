@@ -35,8 +35,8 @@ const folderSchema = new mongoose.Schema({
   path: { type: String, required: true, unique: true }
 });
 
-const Note = mongoose.model('Note', noteSchema);
-const Folder = mongoose.model('Folder', folderSchema);
+const Note = mongoose.models.Note || mongoose.model('Note', noteSchema);
+const Folder = mongoose.models.Folder || mongoose.model('Folder', folderSchema);
 
 // Configure marked
 marked.setOptions({ gfm: true, breaks: true });
