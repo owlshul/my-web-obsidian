@@ -2,7 +2,7 @@
    admin.js — Admin dashboard logic (ES module)
 ───────────────────────────────────────────────────────────────────────────── */
 
-import { createEditor, applyToolbarAction, getContent, setContent } from './editor.js';
+import { createEditor, applyToolbarAction, getContent, setContent, EditorView } from './editor.js';
 
 // ─── State ───────────────────────────────────────────────────────────────────
 let tree = [];
@@ -25,6 +25,45 @@ document.addEventListener('DOMContentLoaded', async () => {
   }
 
   applyTheme();
+  initModals();
+  initEditor();
+  
+  // Preview Toggle setup
+  document.getElementById('previewToggleBtn')?.addEventListener('click', e => {
+    isPreviewMode = !isPreviewMode;
+    const btn = e.currentTarget;
+    const cmWrap = document.getElementById('editorCmWrap');
+    const prevWrap = document.getElementById('previewWrap');
+    
+    if (isPreviewMode) {
+      btn.innerHTML = '<i data-lucide="edit-2" style="width:14px;height:14px;"></i> Edit';
+      cmWrap.style.display = 'none';
+      prevWrap.style.display = 'block';
+      
+      const md = editorView.state.doc.toString();
+      if (typeof marked !== 'undefined') {
+        let processed = md.replace(
+          /^> \[!(\w+)\](.*)\n((?:>.*\n?)*)/gm,
+          (_, type, title, content) => {
+            const t = type.toLowerCase();
+            const tl = title.trim() || (t.charAt(0).toUpperCase() + t.slice(1));
+            const body = content.replace(/^> ?/gm, '').trim();
+            return `<div class="callout callout-${t}"><div class="callout-title">${esc(tl)}</div><div class="callout-content">${body}</div></div>\n`;
+          }
+        );
+        prevWrap.innerHTML = marked.parse(processed, { gfm: true, breaks: true });
+      } else {
+        prevWrap.innerHTML = '<p>Marked.js not loaded.</p>';
+      }
+      updateOutlineFromDOM(prevWrap);
+    } else {
+      btn.innerHTML = '<i data-lucide="eye" style="width:14px;height:14px;"></i> Preview';
+      cmWrap.style.display = 'block';
+      prevWrap.style.display = 'none';
+      updateOutline(editorView.state.doc.toString());
+    }
+    if (window.lucide) window.lucide.createIcons();
+  });
   await loadTree();
   bindUI();
 });
@@ -61,6 +100,57 @@ function renderTree() {
   nodes.forEach(n => ft.appendChild(buildNode(n)));
   if (window.lucide) window.lucide.createIcons({ root: ft });
 }
+
+// ─── Drag and Drop Handling ────────────────────────────────────────────────
+async function handleDropMove(data, targetFolder) {
+  const { type, path: oldPath } = data;
+  if (type === 'folder' && (targetFolder === oldPath || targetFolder.startsWith(oldPath + '/'))) return;
+  const oldName = oldPath.split('/').pop();
+  const newPath = targetFolder ? `${targetFolder}/${oldName}` : oldName;
+  if (oldPath === newPath) return;
+
+  try {
+    const res = await fetch('/api/rename', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oldPath, newPath, type })
+    });
+    const msg = await res.json();
+    if (!res.ok) throw new Error(msg.error || 'Failed to move');
+    
+    showToast('Moved successfully', 'success');
+    loadTree();
+    
+    if (type === 'note' && currentNote && currentNote.path === (oldPath.endsWith('.md') ? oldPath : oldPath + '.md')) {
+      const newNp = newPath.endsWith('.md') ? newPath : newPath + '.md';
+      currentNote.path = newNp;
+      document.getElementById('noteTitleInput').dataset.originalPath = newNp;
+    }
+  } catch (err) {
+    showToast(err.message || 'Failed to move', 'error');
+  }
+}
+
+// Setup root tree drop zone
+document.addEventListener('DOMContentLoaded', () => {
+  const ft = document.getElementById('fileTree');
+  if (!ft) return;
+  ft.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    ft.classList.add('drag-over');
+  });
+  ft.addEventListener('dragleave', e => ft.classList.remove('drag-over'));
+  ft.addEventListener('drop', async e => {
+    e.preventDefault();
+    ft.classList.remove('drag-over');
+    if (e.target.closest('.tree-folder-header')) return; // handled by folder
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+      handleDropMove(data, ''); // empty target folder = root
+    } catch(err) {}
+  });
+});
 
 function buildNode(node) {
   return node.type === 'folder' ? buildFolder(node) : buildNoteItem(node);
@@ -107,6 +197,31 @@ function buildFolder(folder) {
     showCtxMenu(e, 'folder', folder.path, folder.name);
   });
 
+  // Drag and drop for folders
+  header.draggable = true;
+  header.addEventListener('dragstart', e => {
+    e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'folder', path: folder.path }));
+    e.dataTransfer.effectAllowed = 'move';
+    header.style.opacity = '0.5';
+  });
+  header.addEventListener('dragend', () => header.style.opacity = '1');
+  
+  header.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    header.classList.add('drag-over');
+  });
+  header.addEventListener('dragleave', () => header.classList.remove('drag-over'));
+  header.addEventListener('drop', async e => {
+    e.preventDefault();
+    e.stopPropagation(); // prevent root from firing
+    header.classList.remove('drag-over');
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+      handleDropMove(data, folder.path);
+    } catch(err) {}
+  });
+
   el.appendChild(header);
   el.appendChild(children);
   return el;
@@ -144,6 +259,15 @@ function buildNoteItem(note) {
     e.stopPropagation();
     confirmDelete('note', note.path, note.title || note.name);
   });
+
+  // Drag and drop for notes
+  el.draggable = true;
+  el.addEventListener('dragstart', e => {
+    e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'note', path: note.path }));
+    e.dataTransfer.effectAllowed = 'move';
+    el.style.opacity = '0.5';
+  });
+  el.addEventListener('dragend', () => el.style.opacity = '1');
 
   return el;
 }
@@ -215,7 +339,15 @@ function showWelcome() {
   isDirty = false;
   const outlinePane = document.getElementById('outlinePane');
   if (outlinePane) outlinePane.classList.add('hidden');
+  document.getElementById('previewWrap').style.display = 'none';
+  document.getElementById('editorCmWrap').style.display = 'block';
+  isPreviewMode = false;
+  const btn = document.getElementById('previewToggleBtn');
+  if (btn) btn.innerHTML = '<i data-lucide="eye" style="width:14px;height:14px;"></i> Preview';
+  if (window.lucide) window.lucide.createIcons();
 }
+
+let isPreviewMode = false;
 
 // ─── Outline ──────────────────────────────────────────────────────────────────
 function updateOutline(md) {
@@ -228,10 +360,7 @@ function updateOutline(md) {
   let match;
   while ((match = regex.exec(md)) !== null) {
     const cleanText = match[2].replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/[*_~`]/g, '');
-    headings.push({
-      level: match[1].length,
-      text: cleanText,
-    });
+    headings.push({ level: match[1].length, text: cleanText, line: md.substring(0, match.index).split('\n').length });
   }
 
   if (headings.length === 0) {
@@ -244,9 +373,53 @@ function updateOutline(md) {
   headings.forEach(h => {
     const li = document.createElement('li');
     li.className = 'outline-item';
-    const a = document.createElement('div');
+    const a = document.createElement('a');
     a.className = `outline-link outline-level-${h.level}`;
+    a.href = '#';
     a.textContent = h.text;
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      // Scroll CodeMirror to line
+      if (editorView) {
+        const lineInfo = editorView.state.doc.line(h.line);
+        editorView.dispatch({ effects: EditorView.scrollIntoView(lineInfo.from, { y: 'start' }) });
+      }
+    });
+    li.appendChild(a);
+    outlineList.appendChild(li);
+  });
+}
+
+function updateOutlineFromDOM(container) {
+  const outlinePane = document.getElementById('outlinePane');
+  const outlineList = document.getElementById('outlineList');
+  if (!outlinePane || !outlineList) return;
+
+  const headings = Array.from(container.querySelectorAll('h1, h2, h3, h4, h5, h6'));
+
+  if (headings.length === 0) {
+    outlinePane.classList.add('hidden');
+    return;
+  }
+
+  outlinePane.classList.remove('hidden');
+  outlineList.innerHTML = '';
+  headings.forEach(h => {
+    const level = parseInt(h.tagName.substring(1));
+    const li = document.createElement('li');
+    li.className = 'outline-item';
+    const a = document.createElement('a');
+    a.className = `outline-link outline-level-${level}`;
+    a.href = `#${h.id}`;
+    a.textContent = h.textContent;
+    
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      h.scrollIntoView({ behavior: 'smooth' });
+      document.querySelectorAll('.outline-link').forEach(l => l.classList.remove('active'));
+      a.classList.add('active');
+    });
+
     li.appendChild(a);
     outlineList.appendChild(li);
   });

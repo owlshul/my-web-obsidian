@@ -6,6 +6,7 @@
   <title>Admin — My Notes</title>
   <link rel="stylesheet" href="/css/primary-web.css">
   <link rel="stylesheet" href="/css/app.css">
+  <link rel="icon" type="image/png" href="/favicon.png">
   <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     /* Admin-specific overrides */
@@ -107,9 +108,14 @@
         <button class="toolbar-btn" data-action="image"  title="Image"><i data-lucide="image"></i></button>
         <button class="toolbar-btn" data-action="callout-note"    title="Note callout"><i data-lucide="info"></i></button>
         <button class="toolbar-btn" data-action="callout-warning" title="Warning callout"><i data-lucide="alert-triangle"></i></button>
+        <div class="sep"></div>
+        <button class="btn btn-ghost" id="previewToggleBtn" style="font-size:.75rem; padding:.2rem .5rem; height: 26px;">
+          <i data-lucide="eye" style="width:14px;height:14px;"></i> Preview
+        </button>
       </div>
 
       <div class="editor-cm-wrap" id="editorCmWrap"></div>
+      <div class="preview-wrap note-body fade-in" id="previewWrap" style="display:none; flex:1; overflow-y:auto; padding: 2rem;"></div>
     </div>
     
     <div class="resizer" id="rightResizer" style="display:none;"></div>
@@ -139,6 +145,8 @@
 <!-- Toasts -->
 <div class="toast-wrap" id="toastWrap"></div>
 
+<!-- Marked.js for perfect Markdown rendering in Preview -->
+<script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
 <script type="module" src="/js/admin.js"></script>
 </body>
 </html>

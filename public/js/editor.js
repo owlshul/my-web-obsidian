@@ -157,3 +157,5 @@ export function setContent(view, content) {
     selection: { anchor: 0 },
   });
 }
+
+export { EditorView };
