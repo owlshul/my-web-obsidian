@@ -63,10 +63,10 @@
   --shadow-lg:  0 8px 28px hsla(31,23%,20%,.16);
   --scrollbar:  hsl(34, 29%, 72%);
 
-  /* Glassmorphism */
-  --glass-bg: hsla(36, 38%, 98%, 0.75);
-  --glass-border: hsla(37, 38%, 83%, 0.6);
-  --glass-blur: 16px;
+  /* Solid backgrounds (was Glassmorphism) */
+  --glass-bg: hsl(36, 38%, 98%);
+  --glass-border: hsl(37, 38%, 83%);
+  --glass-blur: 0px;
 }
 
 /* ─── Dark Theme ──────────────────────────────────────────────────────────── */
@@ -114,9 +114,9 @@ body.theme-dark {
   --shadow-lg:  0 8px 28px hsla(0,0%,0%,.45);
   --scrollbar:  hsl(28, 12%, 28%);
 
-  /* Glassmorphism Dark */
-  --glass-bg: hsla(30, 10%, 11%, 0.75);
-  --glass-border: hsla(28, 12%, 22%, 0.6);
+  /* Solid backgrounds (was Glassmorphism Dark) */
+  --glass-bg: hsl(30, 10%, 11%);
+  --glass-border: hsl(28, 12%, 22%);
 }
 
 /* ─── Layout Tokens ──────────────────────────────────────────────────────── */
