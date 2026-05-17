@@ -996,15 +996,24 @@ body.theme-dark .note-body h6 {
     display: none !important;
   }
   
-  /* Force single-column absolute full-page width layout without padding/borders */
+  /* Force single-column absolute full-page width layout without padding/borders/height-caps */
+  html,
+  body,
+  #app,
+  main,
+  #mainArea,
   .app-container,
   .main-layout,
   .main-content,
+  .content-wrapper,
   .content-pane {
     display: block !important;
     position: static !important;
     width: 100% !important;
     height: auto !important;
+    min-height: auto !important;
+    max-height: none !important;
+    overflow: visible !important;
     margin: 0 !important;
     padding: 0 !important;
     background: #fff !important;
