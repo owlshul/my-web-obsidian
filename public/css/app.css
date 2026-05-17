@@ -26,11 +26,16 @@
 }
 
 .sidebar.collapsed {
-  width: 0;
-  min-width: 0;
+  position: absolute !important;
+  left: 0 !important;
+  top: var(--topbar-h) !important;
+  height: calc(100vh - var(--topbar-h)) !important;
+  width: var(--sidebar-w) !important;
+  min-width: var(--sidebar-w) !important;
   border-right: none;
   transform: translateX(-100%);
   opacity: 0;
+  z-index: 1000 !important;
 }
 
 .sidebar-header {
@@ -443,8 +448,7 @@
   transition: width .22s ease, min-width .22s ease, padding .22s ease;
 }
 
-.sidebar-right.hidden,
-.sidebar-right.collapsed {
+.sidebar-right.hidden {
   width: 0 !important;
   min-width: 0 !important;
   padding-left: 0;
@@ -452,6 +456,22 @@
   border-left: none;
   overflow: hidden;
   transform: translateX(100%);
+}
+
+.sidebar-right.collapsed {
+  position: absolute !important;
+  right: 0 !important;
+  top: var(--topbar-h) !important;
+  height: calc(100vh - var(--topbar-h)) !important;
+  width: 240px !important;
+  min-width: 240px !important;
+  padding-left: 0;
+  padding-right: 0;
+  border-left: none;
+  overflow: hidden;
+  transform: translateX(100%);
+  opacity: 0;
+  z-index: 1000 !important;
 }
 
 .outline-title {
