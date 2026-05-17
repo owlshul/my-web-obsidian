@@ -417,9 +417,13 @@ html { scroll-behavior: smooth; }
 .reading-progress-bar {
   height: 100%;
   width: 0%;
-  background: linear-gradient(90deg, var(--primary-red), var(--primary-orange), var(--accent));
+  background: hsla(34, 29%, 45%, 0.35);
   border-radius: 0 2px 2px 0;
   transition: width 0.1s linear;
+}
+
+body.theme-dark .reading-progress-bar {
+  background: hsla(42, 79%, 51%, 0.15);
 }
 
 /* ─── Back to Top Button ────────────────────────────────────────────────────── */
