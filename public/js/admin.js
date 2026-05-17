@@ -16,6 +16,14 @@ let isDark = localStorage.getItem('theme') !== 'light';
 let selectedPaths = new Set();
 let lastClickedPath = null;
 
+// ─── Mobile Sidebar Auto-Close ───────────────────────────────────────────────
+function collapseSidebarsOnMobile() {
+  if (window.innerWidth <= 640) {
+    document.getElementById('sidebar')?.classList.add('collapsed');
+    document.getElementById('outlinePane')?.classList.add('collapsed');
+  }
+}
+
 // ─── Boot ────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   // Auth check
@@ -446,6 +454,7 @@ async function openNote(notePath) {
     
     updateOutline(note.content);
     updateWordCount(note.content);
+    collapseSidebarsOnMobile();
   } catch (err) {
     toast('Failed to open note', 'error');
   }
@@ -573,6 +582,7 @@ function updateOutline(md) {
         const lineInfo = editorView.state.doc.line(h.line);
         editorView.dispatch({ effects: EditorView.scrollIntoView(lineInfo.from, { y: 'start' }) });
       }
+      collapseSidebarsOnMobile();
     });
     li.appendChild(a);
     outlineList.appendChild(li);
@@ -607,6 +617,7 @@ function updateOutlineFromDOM(container) {
       h.scrollIntoView({ behavior: 'smooth' });
       document.querySelectorAll('.outline-link').forEach(l => l.classList.remove('active'));
       a.classList.add('active');
+      collapseSidebarsOnMobile();
     });
 
     li.appendChild(a);
@@ -902,12 +913,10 @@ function bindUI() {
 
   initResizers();
 
-  // Mobile sidebar dismissal
+  // Mobile sidebar dismissal on content area click
   document.getElementById('editorArea')?.addEventListener('click', (e) => {
-    // Only collapse if they didn't click the sidebar toggle
     if (window.innerWidth <= 640 && !e.target.closest('.topbar-toggle')) {
-      document.getElementById('sidebar')?.classList.add('collapsed');
-      document.getElementById('outlinePane')?.classList.add('collapsed');
+      collapseSidebarsOnMobile();
     }
   });
 

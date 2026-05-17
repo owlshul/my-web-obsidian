@@ -8,6 +8,14 @@ let currentPath = null;
 let searchTimeout = null;
 let isDark = localStorage.getItem('theme') === 'dark';
 
+// ─── Mobile Sidebar Auto-Close ───────────────────────────────────────────────
+function collapseSidebarsOnMobile() {
+  if (window.innerWidth <= 640) {
+    document.getElementById('sidebar')?.classList.add('collapsed');
+    document.getElementById('outlinePane')?.classList.add('collapsed');
+  }
+}
+
 // ─── Boot ────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', () => {
   if (window.lucide) window.lucide.createIcons();
@@ -59,11 +67,10 @@ document.addEventListener('DOMContentLoaded', () => {
   initReadingProgress();
   initSwipeGestures();
 
-  // Mobile sidebar dismissal
+  // Mobile sidebar dismissal on content area click
   document.getElementById('mainArea')?.addEventListener('click', (e) => {
     if (window.innerWidth <= 640 && !e.target.closest('.topbar-toggle')) {
-      document.getElementById('sidebar')?.classList.add('collapsed');
-      document.getElementById('outlinePane')?.classList.add('collapsed');
+      collapseSidebarsOnMobile();
     }
   });
 
@@ -364,6 +371,7 @@ async function openNote(notePath) {
     wrapCodeBlocks(body);
     updateOutline(body);
     resetReadingProgress();
+    collapseSidebarsOnMobile();
 
     if (pdfBtn) pdfBtn.style.display = 'inline-flex';
 
@@ -378,6 +386,7 @@ async function openNote(notePath) {
       <p>${err.message === 'Private note' ? 'This note is not publicly available.' : 'The requested note could not be found.'}</p>
       <a href="/" class="btn btn-ghost" style="margin-top:.5rem">← Go home</a>
     </div>`;
+    collapseSidebarsOnMobile();
   }
 }
 
@@ -564,6 +573,7 @@ function updateOutline(container) {
       h.scrollIntoView({ behavior: 'smooth' });
       document.querySelectorAll('.outline-link').forEach(l => l.classList.remove('active'));
       a.classList.add('active');
+      collapseSidebarsOnMobile();
     });
 
     li.appendChild(a);
