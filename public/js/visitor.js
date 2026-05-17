@@ -33,7 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
 
   applyTheme();
   loadTree().then(() => {
-    // Handle direct URL like /note/folder/file
     const pathMatch = window.location.pathname.match(/^\/note\/(.+)$/);
     if (pathMatch) {
       const notePath = pathMatch[1] + (pathMatch[1].endsWith('.md') ? '' : '.md');
@@ -81,35 +80,29 @@ document.addEventListener('DOMContentLoaded', () => {
       const sidebarContent = e.target.closest('.sidebar');
       const rightSidebarContent = e.target.closest('.sidebar-right');
       
-      // Close left sidebar if clicking outside and it's not the toggle
       if (sidebar && !sidebar.classList.contains('collapsed') && !toggleBtn && !sidebarContent) {
         sidebar.classList.add('collapsed');
       }
-      // Close right sidebar if clicking outside and it's not the toggle
       if (sidebarRight && !sidebarRight.classList.contains('collapsed') && !rightToggleBtn && !rightSidebarContent) {
         sidebarRight.classList.add('collapsed');
       }
     }
   });
 
-  // Mobile sidebar dismissal on content area click (explicit)
   document.getElementById('mainArea')?.addEventListener('click', (e) => {
     if (window.innerWidth <= 640 && !e.target.closest('.topbar-toggle')) {
       collapseSidebarsOnMobile();
     }
   });
 
-  // Desktop Hover-to-Open Sidebar Peek
   document.addEventListener('mousemove', e => {
     if (window.innerWidth <= 640) return;
-    
     if (e.clientX <= 20) {
       const sidebar = document.getElementById('sidebar');
       if (sidebar && sidebar.classList.contains('collapsed') && !sidebar.classList.contains('peeking')) {
         sidebar.classList.add('peeking');
       }
     }
-    
     if (window.innerWidth - e.clientX <= 20) {
       const outlinePane = document.getElementById('outlinePane');
       if (outlinePane && outlinePane.classList.contains('collapsed') && !outlinePane.classList.contains('hidden') && !outlinePane.classList.contains('peeking')) {
@@ -137,100 +130,6 @@ document.addEventListener('DOMContentLoaded', () => {
     searchTimeout = setTimeout(() => filterTree(e.target.value.trim()), 200);
   });
 
-  // Keyboard shortcut for search
-  document.addEventListener('keydown', e => {
-    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
-      e.preventDefault();
-      document.getElementById('searchInput')?.focus();
-    }
-    if (e.key === 'Escape') {
-      document.getElementById('searchInput')?.blur();
-    }
-  });
-
-  window.addEventListener('popstate', () => {
-    const m = window.location.pathname.match(/^\/note\/(.+)$/);
-    if (m) openNote(m[1] + (m[1].endsWith('.md') ? '' : '.md'));
-    else showWelcome();
-  });
-});
-
-  document.getElementById('toggleTheme').addEventListener('click', () => {
-    isDark = !isDark;
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    applyTheme();
-  });
-
-  document.getElementById('sidebarToggle').addEventListener('click', () => {
-    const sidebar = document.getElementById('sidebar');
-    sidebar.classList.toggle('collapsed');
-    sidebar.classList.remove('peeking');
-  });
-
-  document.getElementById('rightSidebarToggle')?.addEventListener('click', () => {
-    const outlinePane = document.getElementById('outlinePane');
-    outlinePane.classList.toggle('collapsed');
-    outlinePane.classList.remove('peeking');
-  });
-
-  document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
-    window.print();
-  });
-
-  document.getElementById('backToTop')?.addEventListener('click', () => {
-    document.getElementById('contentPane')?.scrollTo({ top: 0, behavior: 'smooth' });
-  });
-
-  initResizers();
-  initReadingProgress();
-  initSwipeGestures();
-
-  // Mobile sidebar dismissal on content area click
-  document.getElementById('mainArea')?.addEventListener('click', (e) => {
-    if (window.innerWidth <= 640 && !e.target.closest('.topbar-toggle')) {
-      collapseSidebarsOnMobile();
-    }
-  });
-
-  // Desktop Hover-to-Open Sidebar Peek
-  document.addEventListener('mousemove', e => {
-    if (window.innerWidth <= 640) return;
-    
-    if (e.clientX <= 20) {
-      const sidebar = document.getElementById('sidebar');
-      if (sidebar && sidebar.classList.contains('collapsed') && !sidebar.classList.contains('peeking')) {
-        sidebar.classList.add('peeking');
-      }
-    }
-    
-    if (window.innerWidth - e.clientX <= 20) {
-      const outlinePane = document.getElementById('outlinePane');
-      if (outlinePane && outlinePane.classList.contains('collapsed') && !outlinePane.classList.contains('hidden') && !outlinePane.classList.contains('peeking')) {
-        outlinePane.classList.add('peeking');
-      }
-    }
-  });
-
-  document.getElementById('sidebar')?.addEventListener('mouseleave', () => {
-    const sidebar = document.getElementById('sidebar');
-    if (sidebar && sidebar.classList.contains('peeking')) {
-      sidebar.classList.remove('peeking');
-    }
-  });
-
-  document.getElementById('outlinePane')?.addEventListener('mouseleave', () => {
-    const outlinePane = document.getElementById('outlinePane');
-    if (outlinePane && outlinePane.classList.contains('peeking')) {
-      outlinePane.classList.remove('peeking');
-    }
-  });
-
-  document.getElementById('searchInput').addEventListener('input', e => {
-    clearTimeout(searchTimeout);
-    searchTimeout = setTimeout(() => filterTree(e.target.value.trim()), 200);
-  });
-
-  // Keyboard shortcut for search
   document.addEventListener('keydown', e => {
     if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
       e.preventDefault();
@@ -257,14 +156,11 @@ function applyTheme() {
     btn.innerHTML = `<i data-lucide="${isDark ? 'sun' : 'moon'}"></i>`;
     if (window.lucide) window.lucide.createIcons({ root: btn });
   }
-  updateKbdHint();
-}
-
-function updateKbdHint() {
   const hint = document.getElementById('kbdHint');
-  if (!hint) return;
-  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
-  hint.innerHTML = `<kbd>${isMac ? '⌘' : 'Ctrl'}K</kbd>`;
+  if (hint) {
+    const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+    hint.innerHTML = `<kbd>${isMac ? '⌘' : 'Ctrl'}K</kbd>`;
+  }
 }
 
 // ─── Tree Loading ─────────────────────────────────────────────────────────────
@@ -305,9 +201,7 @@ function buildNode(node) {
 function buildFolderNode(folder) {
   const el = document.createElement('div');
   el.className = 'tree-folder slide-in';
-
   const noteCount = countNotes(folder);
-  
   const header = document.createElement('div');
   header.className = 'tree-folder-header';
   header.innerHTML = `
@@ -316,11 +210,9 @@ function buildFolderNode(folder) {
     <span class="folder-name" title="${esc(folder.name)}">${esc(folder.name)}</span>
     ${noteCount > 0 ? `<span class="folder-badge">${noteCount}</span>` : ''}
   `;
-
   const children = document.createElement('div');
   children.className = 'tree-folder-children';
   (folder.children || []).forEach(c => children.appendChild(buildNode(c)));
-
   header.addEventListener('click', () => {
     const ch = header.querySelector('.folder-chevron');
     const isOpen = ch.classList.toggle('open');
@@ -329,7 +221,6 @@ function buildFolderNode(folder) {
     iconSpan.innerHTML = `<i data-lucide="${isOpen ? 'folder-open' : 'folder'}" style="width:14px;height:14px;"></i>`;
     if (window.lucide) window.lucide.createIcons({ root: iconSpan });
   });
-
   el.appendChild(header);
   el.appendChild(children);
   return el;
@@ -360,18 +251,14 @@ function buildNoteNode(note) {
 // ─── Note Loading ─────────────────────────────────────────────────────────────
 async function openNote(notePath) {
   const np = notePath.endsWith('.md') ? notePath : notePath + '.md';
-  
   document.querySelectorAll('.tree-note').forEach(el => {
     el.classList.toggle('active', el.dataset.path === np);
   });
-
   currentPath = np;
-
   const urlPath = '/note/' + np.replace(/\.md$/, '');
   if (window.location.pathname !== urlPath) {
     window.history.pushState({}, '', urlPath);
   }
-
   const parts = np.replace(/\.md$/, '').split('/');
   const bc = document.getElementById('breadcrumb');
   bc.innerHTML = `<a href="/">Home</a>`;
@@ -380,91 +267,39 @@ async function openNote(notePath) {
     if (i === parts.length - 1) bc.innerHTML += `<span>${esc(p)}</span>`;
     else bc.innerHTML += `<a href="#">${esc(p)}</a>`;
   });
-
-  // Show skeleton loading
   const pane = document.getElementById('contentPane');
-  pane.innerHTML = `
-    <div class="note-header fade-in">
-      <div class="skeleton skeleton-heading"></div>
-      <div class="skeleton skeleton-title"></div>
-      <div class="skeleton skeleton-line w-40"></div>
-    </div>
-    <hr class="note-divider">
-    <div class="note-body">
-      <div class="skeleton skeleton-line w-full"></div>
-      <div class="skeleton skeleton-line w-80"></div>
-      <div class="skeleton skeleton-line w-full"></div>
-      <div class="skeleton skeleton-line w-60"></div>
-    </div>
-  `;
-
-  // Hide PDF button during loading
+  pane.innerHTML = `<div class="note-header fade-in"><div class="skeleton skeleton-heading"></div><div class="skeleton skeleton-title"></div><div class="skeleton skeleton-line w-40"></div></div><hr class="note-divider"><div class="note-body"><div class="skeleton skeleton-line w-full"></div><div class="skeleton skeleton-line w-80"></div><div class="skeleton skeleton-line w-full"></div><div class="skeleton skeleton-line w-60"></div></div>`;
   const pdfBtn = document.getElementById('exportPdfBtn');
   if (pdfBtn) pdfBtn.style.display = 'none';
-
   try {
     const res = await fetch('/api/note/' + np);
     if (!res.ok) throw new Error(res.status === 403 ? 'Private note' : 'Not found');
     const note = await res.json();
-
     const html = renderMarkdown(note.content);
-
     pane.innerHTML = '';
     const header = document.createElement('div');
     header.className = 'note-header fade-in';
-
-    const updated = note.updated ? new Date(note.updated).toLocaleDateString('en-US', {
-      year: 'numeric', month: 'long', day: 'numeric'
-    }) : '';
-
+    const updated = note.updated ? new Date(note.updated).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
     const wordCount = note.content ? note.content.split(/\s+/).filter(w => w.length > 0).length : 0;
     const readingTime = Math.max(1, Math.ceil(wordCount / 200));
-
-    header.innerHTML = `
-      <div class="note-title-display">${esc(note.title || note.name)}</div>
-      <div class="note-meta">
-        ${updated ? `
-          <span class="note-meta-item">
-            <i data-lucide="calendar" style="width:13px;height:13px;"></i>
-            <span>Updated ${updated}</span>
-          </span>
-        ` : ''}
-        <span class="note-meta-item">
-          <i data-lucide="clock" style="width:13px;height:13px;"></i>
-          <span>${readingTime} min read</span>
-        </span>
-      </div>
-    `;
-
+    header.innerHTML = `<div class="note-title-display">${esc(note.title || note.name)}</div><div class="note-meta">${updated ? `<span class="note-meta-item"><i data-lucide="calendar" style="width:13px;height:13px;"></i><span>Updated ${updated}</span></span>` : ''}<span class="note-meta-item"><i data-lucide="clock" style="width:13px;height:13px;"></i><span>${readingTime} min read</span></span></div>`;
     const divider = document.createElement('hr');
     divider.className = 'note-divider';
-
     const body = document.createElement('div');
     body.className = 'note-body fade-in note-transition';
     body.innerHTML = html;
-
     pane.appendChild(header);
     pane.appendChild(divider);
     pane.appendChild(body);
-
     wrapCodeBlocks(body);
     updateOutline(body);
     resetReadingProgress();
     collapseSidebarsOnMobile();
-
     if (pdfBtn) pdfBtn.style.display = 'inline-flex';
-
     document.title = `${note.title || note.name} — My Notes`;
-
     if (window.lucide) window.lucide.createIcons({ root: header });
-
   } catch (err) {
-    pane.innerHTML = `<div class="welcome fade-in">
-      <div style="font-size:2rem">⚠️</div>
-      <h2 style="font-size:1.2rem">${err.message === 'Private note' ? 'Private Note' : 'Note not found'}</h2>
-      <p>${err.message === 'Private note' ? 'This note is not publicly available.' : 'The requested note could not be found.'}</p>
-      <a href="/" class="btn btn-ghost" style="margin-top:.5rem">← Go home</a>
-    </div>`;
+    pane.innerHTML = `<div class="welcome fade-in"><div style="font-size:2rem">⚠️</div><h2 style="font-size:1.2rem">${err.message === 'Private note' ? 'Private Note' : 'Note not found'}</h2><p>${err.message === 'Private note' ? 'This note is not publicly available.' : 'The requested note could not be found.'}</p><a href="/" class="btn btn-ghost" style="margin-top:.5rem">← Go home</a></div>`;
     collapseSidebarsOnMobile();
   }
 }
@@ -472,37 +307,25 @@ async function openNote(notePath) {
 function showWelcome() {
   currentPath = null;
   document.title = 'My Notes';
-  
   const pdfBtn = document.getElementById('exportPdfBtn');
   if (pdfBtn) pdfBtn.style.display = 'none';
-
   document.getElementById('breadcrumb').innerHTML = `<a href="/">Home</a>`;
-  document.getElementById('contentPane').innerHTML = `
-    <div class="welcome fade-in">
-      <div class="welcome-hero">
-        <div class="welcome-logo">🌿</div>
-        <h2>Welcome to My Notes</h2>
-        <p>Select a note from the sidebar to start reading.</p>
-      </div>
-    </div>`;
+  document.getElementById('contentPane').innerHTML = `<div class="welcome fade-in"><div class="welcome-hero"><div class="welcome-logo">🌿</div><h2>Welcome to My Notes</h2><p>Select a note from the sidebar to start reading.</p></div></div>`;
   document.querySelectorAll('.tree-note').forEach(el => el.classList.remove('active'));
   const outlinePane = document.getElementById('outlinePane');
   if (outlinePane) outlinePane.classList.add('hidden');
   resetReadingProgress();
 }
 
-// ─── Code Block Wrapper with Copy Button ─────────────────────────────────────
+// ─── Code Block Wrapper ─────────────────────────────────────────────────────
 function wrapCodeBlocks(container) {
   const codeBlocks = container.querySelectorAll('pre');
   codeBlocks.forEach(pre => {
     if (pre.closest('.code-block-wrapper')) return;
-    
     const wrapper = document.createElement('div');
     wrapper.className = 'code-block-wrapper';
-    
     const header = document.createElement('div');
     header.className = 'code-block-header';
-    
     const codeEl = pre.querySelector('code');
     let lang = '';
     if (codeEl) {
@@ -510,19 +333,10 @@ function wrapCodeBlocks(container) {
       const langClass = classes.find(c => c.startsWith('language-'));
       if (langClass) lang = langClass.replace('language-', '');
     }
-    
-    header.innerHTML = `
-      <span class="code-block-lang">${lang || 'text'}</span>
-      <button class="code-copy-btn" title="Copy code">
-        <i data-lucide="copy" style="width:13px;height:13px;"></i>
-        <span>Copy</span>
-      </button>
-    `;
-    
+    header.innerHTML = `<span class="code-block-lang">${lang || 'text'}</span><button class="code-copy-btn" title="Copy code"><i data-lucide="copy" style="width:13px;height:13px;"></i><span>Copy</span></button>`;
     const copyBtn = header.querySelector('.code-copy-btn');
     copyBtn.addEventListener('click', () => {
-      const text = pre.textContent;
-      navigator.clipboard.writeText(text).then(() => {
+      navigator.clipboard.writeText(pre.textContent).then(() => {
         copyBtn.classList.add('copied');
         copyBtn.innerHTML = `<i data-lucide="check" style="width:13px;height:13px;"></i><span>Copied!</span>`;
         if (window.lucide) window.lucide.createIcons({ root: copyBtn });
@@ -533,11 +347,9 @@ function wrapCodeBlocks(container) {
         }, 2000);
       });
     });
-    
     pre.parentNode.insertBefore(wrapper, pre);
     wrapper.appendChild(header);
     wrapper.appendChild(pre);
-    
     if (window.lucide) window.lucide.createIcons({ root: header });
   });
 }
@@ -546,56 +358,36 @@ function wrapCodeBlocks(container) {
 function initReadingProgress() {
   const contentPane = document.getElementById('contentPane');
   if (!contentPane) return;
-  
   contentPane.addEventListener('scroll', () => {
-    const el = contentPane;
-    const scrollTop = el.scrollTop;
-    const scrollHeight = el.scrollHeight - el.clientHeight;
+    const scrollTop = contentPane.scrollTop;
+    const scrollHeight = contentPane.scrollHeight - contentPane.clientHeight;
     const progress = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
-    
     const bar = document.getElementById('readingProgressBar');
     if (bar) bar.style.width = progress + '%';
-    
     const backToTop = document.getElementById('backToTop');
-    if (backToTop) {
-      backToTop.classList.toggle('visible', scrollTop > 400);
-    }
+    if (backToTop) backToTop.classList.toggle('visible', scrollTop > 400);
   });
 }
 
 function resetReadingProgress() {
   const bar = document.getElementById('readingProgressBar');
   if (bar) bar.style.width = '0%';
-  
   const backToTop = document.getElementById('backToTop');
   if (backToTop) backToTop.classList.remove('visible');
 }
 
-// ─── Swipe Gestures (Mobile) ─────────────────────────────────────────────────
+// ─── Swipe Gestures ─────────────────────────────────────────────────────────
 function initSwipeGestures() {
   if (window.innerWidth > 640) return;
-  
   let touchStartX = 0;
-  let touchStartY = 0;
-  let touchEndX = 0;
-  
   document.addEventListener('touchstart', e => {
     touchStartX = e.changedTouches[0].screenX;
-    touchStartY = e.changedTouches[0].screenY;
   }, { passive: true });
-  
   document.addEventListener('touchend', e => {
-    touchEndX = e.changedTouches[0].screenX;
-    const touchEndY = e.changedTouches[0].screenY;
-    
-    const diffX = touchEndX - touchStartX;
-    const diffY = Math.abs(touchEndY - touchStartY);
-    
-    if (Math.abs(diffX) < 80 || Math.abs(diffX) < diffY) return;
-    
+    const diffX = e.changedTouches[0].screenX - touchStartX;
+    if (Math.abs(diffX) < 80) return;
     const sidebar = document.getElementById('sidebar');
     const outlinePane = document.getElementById('outlinePane');
-    
     if (diffX > 0 && touchStartX < 40) {
       sidebar?.classList.remove('collapsed');
     } else if (diffX < 0 && touchStartX > window.innerWidth - 40) {
@@ -611,14 +403,11 @@ function updateOutline(container) {
   const outlinePane = document.getElementById('outlinePane');
   const outlineList = document.getElementById('outlineList');
   if (!outlinePane || !outlineList) return;
-
   const headings = Array.from(container.querySelectorAll('h1, h2, h3, h4, h5, h6'));
-
   if (headings.length === 0) {
     outlinePane.classList.add('hidden');
     return;
   }
-
   outlinePane.classList.remove('hidden');
   outlineList.innerHTML = '';
   headings.forEach(h => {
@@ -629,7 +418,6 @@ function updateOutline(container) {
     a.className = `outline-link outline-level-${level}`;
     a.href = `#${h.id}`;
     a.textContent = h.textContent;
-    
     a.addEventListener('click', e => {
       e.preventDefault();
       h.scrollIntoView({ behavior: 'smooth' });
@@ -637,7 +425,6 @@ function updateOutline(container) {
       a.classList.add('active');
       collapseSidebarsOnMobile();
     });
-
     li.appendChild(a);
     outlineList.appendChild(li);
   });
@@ -646,32 +433,23 @@ function updateOutline(container) {
 // ─── Markdown Renderer ────────────────────────────────────────────────────────
 function renderMarkdown(md) {
   if (!md) return '';
-
-  md = md.replace(
-    /^> \[!(\w+)\](.*)\n((?:>.*\n?)*)/gm,
-    (_, type, title, content) => {
-      const t = type.toLowerCase();
-      const tl = title.trim() || (t.charAt(0).toUpperCase() + t.slice(1));
-      const body = content.replace(/^> ?/gm, '').trim();
-      return `<div class="callout callout-${t}"><div class="callout-title">${esc(tl)}</div><div class="callout-content">${body}</div></div>\n`;
-    }
-  );
-
+  md = md.replace(/^> \[!(\w+)\](.*)\n((?:>.*\n?)*)/gm, (_, type, title, content) => {
+    const t = type.toLowerCase();
+    const tl = title.trim() || (t.charAt(0).toUpperCase() + t.slice(1));
+    const body = content.replace(/^> ?/gm, '').trim();
+    return `<div class="callout callout-${t}"><div class="callout-title">${esc(tl)}</div><div class="callout-content">${body}</div></div>\n`;
+  });
   if (typeof marked !== 'undefined') {
     return marked.parse(md, { gfm: true, breaks: true });
   }
-
   md = md.replace(/^(#{1,6})\s+(.+)$/gm, (_, hashes, text) => {
     const level = hashes.length;
     const cleanText = text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/[*_~`]/g, '');
     const id = 'h-' + cleanText.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/(^-|-$)/g, '');
     return `<h${level} id="${id}">${text}</h${level}>`;
   });
-
   md = md.replace(/^---+$/gm, '<hr>');
-  md = md.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
-    return `<pre><code class="language-${lang}">${escHtml(code.trim())}</code></pre>`;
-  });
+  md = md.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => `<pre><code class="language-${lang}">${escHtml(code.trim())}</code></pre>`);
   md = md.replace(/`([^`]+)`/g, '<code>$1</code>');
   md = md.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
   md = md.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
@@ -691,7 +469,6 @@ function renderMarkdown(md) {
     return `<p>${line}</p>`;
   });
   md = md.replace(/\n{3,}/g, '\n\n');
-
   return md;
 }
 
@@ -716,34 +493,6 @@ function filterNodes(nodes, q) {
   return result;
 }
 
-// ─── Toast with Icons ────────────────────────────────────────────────────────
-function showToast(msg, type = 'info') {
-  const wrap = document.getElementById('toastWrap');
-  if (!wrap) return;
-  
-  const t = document.createElement('div');
-  t.className = `toast ${type}`;
-  
-  const iconMap = {
-    success: 'check-circle',
-    error: 'alert-circle',
-    info: 'info'
-  };
-  
-  const icon = iconMap[type] || 'info';
-  t.innerHTML = `<i data-lucide="${icon}" style="width:15px;height:15px;flex-shrink:0;"></i><span>${esc(msg)}</span>`;
-  
-  wrap.appendChild(t);
-  if (window.lucide) window.lucide.createIcons({ root: t });
-  
-  setTimeout(() => {
-    t.style.opacity = '0';
-    t.style.transform = 'translateX(20px)';
-    t.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
-    setTimeout(() => t.remove(), 250);
-  }, 3000);
-}
-
 // ─── Utilities ────────────────────────────────────────────────────────────────
 function esc(str) {
   return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;');
@@ -761,14 +510,12 @@ function initResizers() {
   const rightResizer = document.getElementById('rightResizer');
   const sidebar = document.getElementById('sidebar');
   const outlinePane = document.getElementById('outlinePane');
-
   if (leftResizer) {
     leftResizer.addEventListener('mousedown', () => { isResizingLeft = true; document.body.style.cursor = 'col-resize'; leftResizer.classList.add('dragging'); });
   }
   if (rightResizer) {
     rightResizer.addEventListener('mousedown', () => { isResizingRight = true; document.body.style.cursor = 'col-resize'; rightResizer.classList.add('dragging'); });
   }
-
   document.addEventListener('mousemove', e => {
     if (!isResizingLeft && !isResizingRight) return;
     e.preventDefault();
@@ -782,7 +529,6 @@ function initResizers() {
       outlinePane.style.minWidth = newWidth + 'px';
     }
   });
-
   document.addEventListener('mouseup', () => {
     isResizingLeft = false;
     isResizingRight = false;
