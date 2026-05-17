@@ -928,38 +928,36 @@ function bindUI() {
     }
   });
 
-  // Desktop Hover-to-Open Sidebar Peek
+  // Desktop Hover-to-Open Sidebar Peek (Coordinate-based high sensitivity tracker)
   document.addEventListener('mousemove', e => {
     if (window.innerWidth <= 640) return; // Only on desktop
     
     // Left sidebar peek
-    if (e.clientX <= 50) {
-      const sidebar = document.getElementById('sidebar');
-      if (sidebar && sidebar.classList.contains('collapsed') && !sidebar.classList.contains('peeking')) {
-        sidebar.classList.add('peeking');
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar && sidebar.classList.contains('collapsed')) {
+      if (!sidebar.classList.contains('peeking')) {
+        if (e.clientX <= 80) {
+          sidebar.classList.add('peeking');
+        }
+      } else {
+        if (e.clientX > 300) {
+          sidebar.classList.remove('peeking');
+        }
       }
     }
     
     // Right sidebar peek
-    if (window.innerWidth - e.clientX <= 50) {
-      const outlinePane = document.getElementById('outlinePane');
-      if (outlinePane && outlinePane.classList.contains('collapsed') && !outlinePane.classList.contains('hidden') && !outlinePane.classList.contains('peeking')) {
-        outlinePane.classList.add('peeking');
-      }
-    }
-  });
-
-  document.getElementById('sidebar')?.addEventListener('mouseleave', () => {
-    const sidebar = document.getElementById('sidebar');
-    if (sidebar && sidebar.classList.contains('peeking')) {
-      sidebar.classList.remove('peeking');
-    }
-  });
-
-  document.getElementById('outlinePane')?.addEventListener('mouseleave', () => {
     const outlinePane = document.getElementById('outlinePane');
-    if (outlinePane && outlinePane.classList.contains('peeking')) {
-      outlinePane.classList.remove('peeking');
+    if (outlinePane && !outlinePane.classList.contains('hidden') && outlinePane.classList.contains('collapsed')) {
+      if (!outlinePane.classList.contains('peeking')) {
+        if (window.innerWidth - e.clientX <= 80) {
+          outlinePane.classList.add('peeking');
+        }
+      } else {
+        if (window.innerWidth - e.clientX > 280) {
+          outlinePane.classList.remove('peeking');
+        }
+      }
     }
   });
 
