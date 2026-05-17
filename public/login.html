@@ -8,6 +8,7 @@
   <meta name="description" content="Admin login for the personal notes publishing system.">
   <link rel="stylesheet" href="/css/primary-web.css">
   <link rel="stylesheet" href="/css/app.css">
+  <script src="https://unpkg.com/lucide@latest"></script>
   <style>
     .login-card .btn-primary {
       width: 100%;
@@ -16,9 +17,39 @@
       font-size: .95rem;
     }
 
-    input[type="password"] {
+    .password-wrapper {
+      position: relative;
+    }
+
+    .password-wrapper input {
+      padding-right: 2.5rem;
       font-size: 1rem;
       letter-spacing: .08em;
+    }
+
+    .password-toggle {
+      position: absolute;
+      right: 0.5rem;
+      top: 50%;
+      transform: translateY(-50%);
+      background: none;
+      border: none;
+      color: var(--text-faint);
+      cursor: pointer;
+      padding: 0.25rem;
+      display: flex;
+      align-items: center;
+      justify-content: center;
+      transition: color 0.12s;
+    }
+
+    .password-toggle:hover {
+      color: var(--text-normal);
+    }
+
+    .password-toggle svg {
+      width: 16px;
+      height: 16px;
     }
   </style>
 </head>
@@ -27,7 +58,7 @@
   <div class="login-page">
     <div class="login-card">
       <div class="login-logo">
-        <div class="icon">🌿</div>
+        <div class="icon"><i data-lucide="leaf"></i></div>
         <div>
           <h1>My Notes</h1>
           <p>Admin access</p>
@@ -37,8 +68,13 @@
       <form id="loginForm">
         <div class="form-group">
           <label for="password">Password</label>
-          <input type="password" id="password" placeholder="Enter admin password" autofocus
-            autocomplete="current-password">
+          <div class="password-wrapper">
+            <input type="password" id="password" placeholder="Enter admin password" autofocus
+              autocomplete="current-password">
+            <button type="button" class="password-toggle" id="passwordToggle" title="Show password">
+              <i data-lucide="eye"></i>
+            </button>
+          </div>
         </div>
         <button type="submit" class="btn btn-primary" id="loginBtn">
           <span id="btnText">Sign In</span>
@@ -47,12 +83,25 @@
       </form>
 
       <div style="margin-top:1.5rem;text-align:center">
-        <a href="/" style="font-size:.8rem;color:var(--tx-3)">← Back to public notes</a>
+        <a href="/" style="font-size:.8rem;color:var(--text-faint)">← Back to public notes</a>
       </div>
     </div>
   </div>
 
   <script>
+    if (window.lucide) window.lucide.createIcons();
+
+    // Password toggle
+    document.getElementById('passwordToggle')?.addEventListener('click', () => {
+      const input = document.getElementById('password');
+      const btn = document.getElementById('passwordToggle');
+      const isPassword = input.type === 'password';
+      input.type = isPassword ? 'text' : 'password';
+      btn.innerHTML = `<i data-lucide="${isPassword ? 'eye-off' : 'eye'}"></i>`;
+      btn.title = isPassword ? 'Hide password' : 'Show password';
+      if (window.lucide) window.lucide.createIcons({ root: btn });
+    });
+
     // Check if already logged in
     fetch('/api/auth').then(r => r.json()).then(d => {
       if (d.admin) window.location.href = '/admin';

@@ -19,6 +19,7 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   applyTheme();
+  loadRecentNotes();
   loadTree().then(() => {
     // Handle direct URL like /note/folder/file
     const pathMatch = window.location.pathname.match(/^\/note\/(.+)$/);
@@ -50,7 +51,13 @@ document.addEventListener('DOMContentLoaded', () => {
     window.print();
   });
 
+  document.getElementById('backToTop')?.addEventListener('click', () => {
+    document.getElementById('contentPane')?.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
   initResizers();
+  initReadingProgress();
+  initSwipeGestures();
 
   // Mobile sidebar dismissal
   document.getElementById('mainArea')?.addEventListener('click', (e) => {
@@ -62,9 +69,8 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Desktop Hover-to-Open Sidebar Peek
   document.addEventListener('mousemove', e => {
-    if (window.innerWidth <= 640) return; // Only on desktop
+    if (window.innerWidth <= 640) return;
     
-    // Left sidebar peek
     if (e.clientX <= 20) {
       const sidebar = document.getElementById('sidebar');
       if (sidebar && sidebar.classList.contains('collapsed') && !sidebar.classList.contains('peeking')) {
@@ -72,7 +78,6 @@ document.addEventListener('DOMContentLoaded', () => {
       }
     }
     
-    // Right sidebar peek
     if (window.innerWidth - e.clientX <= 20) {
       const outlinePane = document.getElementById('outlinePane');
       if (outlinePane && outlinePane.classList.contains('collapsed') && !outlinePane.classList.contains('hidden') && !outlinePane.classList.contains('peeking')) {
@@ -100,6 +105,17 @@ document.addEventListener('DOMContentLoaded', () => {
     searchTimeout = setTimeout(() => filterTree(e.target.value.trim()), 200);
   });
 
+  // Keyboard shortcut for search
+  document.addEventListener('keydown', e => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      document.getElementById('searchInput')?.focus();
+    }
+    if (e.key === 'Escape') {
+      document.getElementById('searchInput')?.blur();
+    }
+  });
+
   window.addEventListener('popstate', () => {
     const m = window.location.pathname.match(/^\/note\/(.+)$/);
     if (m) openNote(m[1] + (m[1].endsWith('.md') ? '' : '.md'));
@@ -116,6 +132,58 @@ function applyTheme() {
     btn.innerHTML = `<i data-lucide="${isDark ? 'sun' : 'moon'}"></i>`;
     if (window.lucide) window.lucide.createIcons({ root: btn });
   }
+  updateKbdHint();
+}
+
+function updateKbdHint() {
+  const hint = document.getElementById('kbdHint');
+  if (!hint) return;
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  hint.innerHTML = `<kbd>${isMac ? '⌘' : 'Ctrl'}K</kbd>`;
+}
+
+// ─── Recent Notes ────────────────────────────────────────────────────────────
+async function loadRecentNotes() {
+  try {
+    const res = await fetch('/api/recent');
+    if (!res.ok) throw new Error();
+    const notes = await res.json();
+    renderRecentNotes(notes);
+  } catch {
+    const grid = document.getElementById('recentNotesGrid');
+    if (grid) grid.innerHTML = '<p style="font-size:0.82rem;color:var(--text-faint)">No recent notes</p>';
+  }
+}
+
+function renderRecentNotes(notes) {
+  const grid = document.getElementById('recentNotesGrid');
+  if (!grid) return;
+  
+  if (!notes.length) {
+    grid.innerHTML = '<p style="font-size:0.82rem;color:var(--text-faint)">No public notes yet</p>';
+    return;
+  }
+
+  grid.innerHTML = '';
+  notes.forEach(note => {
+    const card = document.createElement('div');
+    card.className = 'recent-note-card';
+    
+    const updated = note.updated ? new Date(note.updated).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
+    
+    card.innerHTML = `
+      <h4>${esc(note.title)}</h4>
+      <div class="card-meta">
+        <i data-lucide="clock" style="width:12px;height:12px;"></i>
+        <span>${updated}</span>
+      </div>
+    `;
+    
+    card.addEventListener('click', () => openNote(note.path));
+    grid.appendChild(card);
+  });
+  
+  if (window.lucide) window.lucide.createIcons({ root: grid });
 }
 
 // ─── Tree Loading ─────────────────────────────────────────────────────────────
@@ -152,12 +220,15 @@ function buildFolderNode(folder) {
   const el = document.createElement('div');
   el.className = 'tree-folder slide-in';
 
+  const noteCount = countNotes(folder);
+  
   const header = document.createElement('div');
   header.className = 'tree-folder-header';
   header.innerHTML = `
     <span class="folder-chevron open"><i data-lucide="chevron-right" style="width:12px;height:12px;"></i></span>
     <span class="folder-icon"><i data-lucide="folder" style="width:14px;height:14px;"></i></span>
-    <span class="folder-name">${esc(folder.name)}</span>
+    <span class="folder-name" title="${esc(folder.name)}">${esc(folder.name)}</span>
+    ${noteCount > 0 ? `<span class="folder-badge">${noteCount}</span>` : ''}
   `;
 
   const children = document.createElement('div');
@@ -178,13 +249,23 @@ function buildFolderNode(folder) {
   return el;
 }
 
+function countNotes(folder) {
+  let count = 0;
+  for (const child of (folder.children || [])) {
+    if (child.type === 'note') count++;
+    else if (child.type === 'folder') count += countNotes(child);
+  }
+  return count;
+}
+
 function buildNoteNode(note) {
   const el = document.createElement('div');
   el.className = 'tree-note slide-in';
   el.dataset.path = note.path;
+  const title = note.title || note.name;
   el.innerHTML = `
     <span class="note-icon"><i data-lucide="file-text" style="width:14px;height:14px;"></i></span>
-    <span class="note-title">${esc(note.title || note.name)}</span>
+    <span class="note-title" title="${esc(title)}">${esc(title)}</span>
   `;
   el.addEventListener('click', () => openNote(note.path));
   return el;
@@ -194,20 +275,17 @@ function buildNoteNode(note) {
 async function openNote(notePath) {
   const np = notePath.endsWith('.md') ? notePath : notePath + '.md';
   
-  // Update active state
   document.querySelectorAll('.tree-note').forEach(el => {
     el.classList.toggle('active', el.dataset.path === np);
   });
 
   currentPath = np;
 
-  // Update URL
   const urlPath = '/note/' + np.replace(/\.md$/, '');
   if (window.location.pathname !== urlPath) {
     window.history.pushState({}, '', urlPath);
   }
 
-  // Update breadcrumb
   const parts = np.replace(/\.md$/, '').split('/');
   const bc = document.getElementById('breadcrumb');
   bc.innerHTML = `<a href="/">Home</a>`;
@@ -217,19 +295,32 @@ async function openNote(notePath) {
     else bc.innerHTML += `<a href="#">${esc(p)}</a>`;
   });
 
-  // Show loading
+  // Show skeleton loading
   const pane = document.getElementById('contentPane');
-  pane.innerHTML = `<div class="welcome" style="color:var(--tx-3)">
-    <div style="font-size:1.5rem;animation:spin 1s linear infinite">⟳</div>
-    <p>Loading…</p>
-  </div>`;
+  pane.innerHTML = `
+    <div class="note-header fade-in">
+      <div class="skeleton skeleton-heading"></div>
+      <div class="skeleton skeleton-title"></div>
+      <div class="skeleton skeleton-line w-40"></div>
+    </div>
+    <hr class="note-divider">
+    <div class="note-body">
+      <div class="skeleton skeleton-line w-full"></div>
+      <div class="skeleton skeleton-line w-80"></div>
+      <div class="skeleton skeleton-line w-full"></div>
+      <div class="skeleton skeleton-line w-60"></div>
+    </div>
+  `;
+
+  // Hide PDF button during loading
+  const pdfBtn = document.getElementById('exportPdfBtn');
+  if (pdfBtn) pdfBtn.style.display = 'none';
 
   try {
     const res = await fetch('/api/note/' + np);
     if (!res.ok) throw new Error(res.status === 403 ? 'Private note' : 'Not found');
     const note = await res.json();
 
-    // Render markdown
     const html = renderMarkdown(note.content);
 
     pane.innerHTML = '';
@@ -240,10 +331,22 @@ async function openNote(notePath) {
       year: 'numeric', month: 'long', day: 'numeric'
     }) : '';
 
+    const wordCount = note.content ? note.content.split(/\s+/).filter(w => w.length > 0).length : 0;
+    const readingTime = Math.max(1, Math.ceil(wordCount / 200));
+
     header.innerHTML = `
       <div class="note-title-display">${esc(note.title || note.name)}</div>
       <div class="note-meta">
-        ${updated ? `<span>Updated ${updated}</span>` : ''}
+        ${updated ? `
+          <span class="note-meta-item">
+            <i data-lucide="calendar" style="width:13px;height:13px;"></i>
+            <span>Updated ${updated}</span>
+          </span>
+        ` : ''}
+        <span class="note-meta-item">
+          <i data-lucide="clock" style="width:13px;height:13px;"></i>
+          <span>${readingTime} min read</span>
+        </span>
       </div>
     `;
 
@@ -251,20 +354,22 @@ async function openNote(notePath) {
     divider.className = 'note-divider';
 
     const body = document.createElement('div');
-    body.className = 'note-body fade-in';
+    body.className = 'note-body fade-in note-transition';
     body.innerHTML = html;
 
     pane.appendChild(header);
     pane.appendChild(divider);
     pane.appendChild(body);
 
+    wrapCodeBlocks(body);
     updateOutline(body);
+    resetReadingProgress();
 
-    const pdfBtn = document.getElementById('exportPdfBtn');
     if (pdfBtn) pdfBtn.style.display = 'inline-flex';
 
-    // Update page title
     document.title = `${note.title || note.name} — My Notes`;
+
+    if (window.lucide) window.lucide.createIcons({ root: header });
 
   } catch (err) {
     pane.innerHTML = `<div class="welcome fade-in">
@@ -286,15 +391,151 @@ function showWelcome() {
   document.getElementById('breadcrumb').innerHTML = `<a href="/">Home</a>`;
   document.getElementById('contentPane').innerHTML = `
     <div class="welcome fade-in">
-      <div class="welcome-logo">🌿</div>
-      <h2>Welcome to My Notes</h2>
-      <p>Select a note from the sidebar to start reading.</p>
+      <div class="welcome-hero">
+        <div class="welcome-logo">🌿</div>
+        <h2>Welcome to My Notes</h2>
+        <p>Select a note from the sidebar to start reading.</p>
+      </div>
+      <hr class="welcome-divider">
+      <div class="welcome-section-title">Recent Notes</div>
+      <div class="recent-notes-grid" id="recentNotesGrid">
+        <div class="skeleton recent-note-card">
+          <div class="skeleton-line w-80"></div>
+          <div class="skeleton-line w-40"></div>
+        </div>
+        <div class="skeleton recent-note-card">
+          <div class="skeleton-line w-80"></div>
+          <div class="skeleton-line w-40"></div>
+        </div>
+        <div class="skeleton recent-note-card">
+          <div class="skeleton-line w-80"></div>
+          <div class="skeleton-line w-40"></div>
+        </div>
+      </div>
     </div>`;
   document.querySelectorAll('.tree-note').forEach(el => el.classList.remove('active'));
   const outlinePane = document.getElementById('outlinePane');
   if (outlinePane) outlinePane.classList.add('hidden');
+  resetReadingProgress();
+  loadRecentNotes();
 }
 
+// ─── Code Block Wrapper with Copy Button ─────────────────────────────────────
+function wrapCodeBlocks(container) {
+  const codeBlocks = container.querySelectorAll('pre');
+  codeBlocks.forEach(pre => {
+    if (pre.closest('.code-block-wrapper')) return;
+    
+    const wrapper = document.createElement('div');
+    wrapper.className = 'code-block-wrapper';
+    
+    const header = document.createElement('div');
+    header.className = 'code-block-header';
+    
+    const codeEl = pre.querySelector('code');
+    let lang = '';
+    if (codeEl) {
+      const classes = codeEl.className.split(' ');
+      const langClass = classes.find(c => c.startsWith('language-'));
+      if (langClass) lang = langClass.replace('language-', '');
+    }
+    
+    header.innerHTML = `
+      <span class="code-block-lang">${lang || 'text'}</span>
+      <button class="code-copy-btn" title="Copy code">
+        <i data-lucide="copy" style="width:13px;height:13px;"></i>
+        <span>Copy</span>
+      </button>
+    `;
+    
+    const copyBtn = header.querySelector('.code-copy-btn');
+    copyBtn.addEventListener('click', () => {
+      const text = pre.textContent;
+      navigator.clipboard.writeText(text).then(() => {
+        copyBtn.classList.add('copied');
+        copyBtn.innerHTML = `<i data-lucide="check" style="width:13px;height:13px;"></i><span>Copied!</span>`;
+        if (window.lucide) window.lucide.createIcons({ root: copyBtn });
+        setTimeout(() => {
+          copyBtn.classList.remove('copied');
+          copyBtn.innerHTML = `<i data-lucide="copy" style="width:13px;height:13px;"></i><span>Copy</span>`;
+          if (window.lucide) window.lucide.createIcons({ root: copyBtn });
+        }, 2000);
+      });
+    });
+    
+    pre.parentNode.insertBefore(wrapper, pre);
+    wrapper.appendChild(header);
+    wrapper.appendChild(pre);
+    
+    if (window.lucide) window.lucide.createIcons({ root: header });
+  });
+}
+
+// ─── Reading Progress ────────────────────────────────────────────────────────
+function initReadingProgress() {
+  const contentPane = document.getElementById('contentPane');
+  if (!contentPane) return;
+  
+  contentPane.addEventListener('scroll', () => {
+    const el = contentPane;
+    const scrollTop = el.scrollTop;
+    const scrollHeight = el.scrollHeight - el.clientHeight;
+    const progress = scrollHeight > 0 ? (scrollTop / scrollHeight) * 100 : 0;
+    
+    const bar = document.getElementById('readingProgressBar');
+    if (bar) bar.style.width = progress + '%';
+    
+    const backToTop = document.getElementById('backToTop');
+    if (backToTop) {
+      backToTop.classList.toggle('visible', scrollTop > 400);
+    }
+  });
+}
+
+function resetReadingProgress() {
+  const bar = document.getElementById('readingProgressBar');
+  if (bar) bar.style.width = '0%';
+  
+  const backToTop = document.getElementById('backToTop');
+  if (backToTop) backToTop.classList.remove('visible');
+}
+
+// ─── Swipe Gestures (Mobile) ─────────────────────────────────────────────────
+function initSwipeGestures() {
+  if (window.innerWidth > 640) return;
+  
+  let touchStartX = 0;
+  let touchStartY = 0;
+  let touchEndX = 0;
+  
+  document.addEventListener('touchstart', e => {
+    touchStartX = e.changedTouches[0].screenX;
+    touchStartY = e.changedTouches[0].screenY;
+  }, { passive: true });
+  
+  document.addEventListener('touchend', e => {
+    touchEndX = e.changedTouches[0].screenX;
+    const touchEndY = e.changedTouches[0].screenY;
+    
+    const diffX = touchEndX - touchStartX;
+    const diffY = Math.abs(touchEndY - touchStartY);
+    
+    if (Math.abs(diffX) < 80 || Math.abs(diffX) < diffY) return;
+    
+    const sidebar = document.getElementById('sidebar');
+    const outlinePane = document.getElementById('outlinePane');
+    
+    if (diffX > 0 && touchStartX < 40) {
+      sidebar?.classList.remove('collapsed');
+    } else if (diffX < 0 && touchStartX > window.innerWidth - 40) {
+      outlinePane?.classList.remove('collapsed');
+    } else if (diffX < 0 && !sidebar?.classList.contains('collapsed')) {
+      sidebar?.classList.add('collapsed');
+    }
+  }, { passive: true });
+}
+
+// ─── Outline ─────────────────────────────────────────────────────────────────
 function updateOutline(container) {
   const outlinePane = document.getElementById('outlinePane');
   const outlineList = document.getElementById('outlineList');
@@ -334,7 +575,6 @@ function updateOutline(container) {
 function renderMarkdown(md) {
   if (!md) return '';
 
-  // Process callouts before standard markdown
   md = md.replace(
     /^> \[!(\w+)\](.*)\n((?:>.*\n?)*)/gm,
     (_, type, title, content) => {
@@ -345,13 +585,10 @@ function renderMarkdown(md) {
     }
   );
 
-  // If marked library is available (via CDN), use it for perfect markdown rendering (including lists and newlines)
   if (typeof marked !== 'undefined') {
     return marked.parse(md, { gfm: true, breaks: true });
   }
 
-  // Simple markdown → HTML fallback (no external lib needed for basic rendering)
-  // Headings
   md = md.replace(/^(#{1,6})\s+(.+)$/gm, (_, hashes, text) => {
     const level = hashes.length;
     const cleanText = text.replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/[*_~`]/g, '');
@@ -359,45 +596,28 @@ function renderMarkdown(md) {
     return `<h${level} id="${id}">${text}</h${level}>`;
   });
 
-  // HR
   md = md.replace(/^---+$/gm, '<hr>');
-
-  // Code blocks
   md = md.replace(/```(\w*)\n([\s\S]*?)```/g, (_, lang, code) => {
     return `<pre><code class="language-${lang}">${escHtml(code.trim())}</code></pre>`;
   });
-
-  // Inline code
   md = md.replace(/`([^`]+)`/g, '<code>$1</code>');
-
-  // Bold + italic
   md = md.replace(/\*\*\*(.+?)\*\*\*/g, '<strong><em>$1</em></strong>');
   md = md.replace(/\*\*(.+?)\*\*/g, '<strong>$1</strong>');
   md = md.replace(/\*(.+?)\*/g, '<em>$1</em>');
   md = md.replace(/__(.+?)__/g, '<strong>$1</strong>');
   md = md.replace(/_(.+?)_/g, '<em>$1</em>');
   md = md.replace(/~~(.+?)~~/g, '<del>$1</del>');
-
-  // Blockquote (non-callout)
   md = md.replace(/^> (.+)$/gm, '<blockquote>$1</blockquote>');
-
-  // Links and images
   md = md.replace(/!\[([^\]]*)\]\(([^)]+)\)/g, '<img src="$2" alt="$1" style="max-width:100%;border-radius:var(--radius-md)">');
   md = md.replace(/\[([^\]]+)\]\(([^)]+)\)/g, '<a href="$2" target="_blank" rel="noopener">$1</a>');
-
-  // Lists (basic)
   md = md.replace(/^[-*+]\s+(.+)$/gm, '<li>$1</li>');
   md = md.replace(/(<li>.*<\/li>\n?)+/g, m => `<ul>${m}</ul>`);
   md = md.replace(/^\d+\.\s+(.+)$/gm, '<li>$1</li>');
-
-  // Paragraphs: wrap standalone lines
   md = md.replace(/^(?!<[a-zA-Z]).+$/gm, line => {
     if (!line.trim()) return '';
     if (line.startsWith('<')) return line;
     return `<p>${line}</p>`;
   });
-
-  // Clean up empty lines
   md = md.replace(/\n{3,}/g, '\n\n');
 
   return md;
@@ -422,6 +642,34 @@ function filterNodes(nodes, q) {
     }
   }
   return result;
+}
+
+// ─── Toast with Icons ────────────────────────────────────────────────────────
+function showToast(msg, type = 'info') {
+  const wrap = document.getElementById('toastWrap');
+  if (!wrap) return;
+  
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  
+  const iconMap = {
+    success: 'check-circle',
+    error: 'alert-circle',
+    info: 'info'
+  };
+  
+  const icon = iconMap[type] || 'info';
+  t.innerHTML = `<i data-lucide="${icon}" style="width:15px;height:15px;flex-shrink:0;"></i><span>${esc(msg)}</span>`;
+  
+  wrap.appendChild(t);
+  if (window.lucide) window.lucide.createIcons({ root: t });
+  
+  setTimeout(() => {
+    t.style.opacity = '0';
+    t.style.transform = 'translateX(20px)';
+    t.style.transition = 'opacity 0.25s ease, transform 0.25s ease';
+    setTimeout(() => t.remove(), 250);
+  }, 3000);
 }
 
 // ─── Utilities ────────────────────────────────────────────────────────────────

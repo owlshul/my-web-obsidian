@@ -13,6 +13,11 @@
 <body class="theme-light">
 
 <div id="app">
+  <!-- Reading Progress Bar -->
+  <div class="reading-progress" id="readingProgress">
+    <div class="reading-progress-bar" id="readingProgressBar"></div>
+  </div>
+
   <!-- Sidebar -->
   <aside class="sidebar" id="sidebar">
     <div class="sidebar-header">
@@ -29,6 +34,7 @@
       <div style="position:relative;display:flex;align-items:center;">
         <i data-lucide="search" style="position:absolute;left:8px;width:14px;height:14px;color:var(--text-faint);"></i>
         <input type="search" id="searchInput" placeholder="Search notes…" autocomplete="off" style="padding-left:28px;width:100%;">
+        <span class="kbd-hint" id="kbdHint"><kbd>⌘K</kbd></span>
       </div>
     </div>
 
@@ -65,16 +71,34 @@
     <div class="content-wrapper">
       <div class="content-pane" id="contentPane">
         <div class="welcome fade-in">
-          <div class="welcome-logo"><i data-lucide="leaf"></i></div>
-          <h2>Hii!</h2>
-          <p> You asked for notes, well, this is just a fancy way of sending them. Easier than dumping files on you.
+          <div class="welcome-hero">
+            <div class="welcome-logo"><i data-lucide="leaf"></i></div>
+            <h2>Hii!</h2>
+            <p> You asked for notes, well, this is just a fancy way of sending them. Easier than dumping files on you.
 
 cool, maybe.
 
 ab padhl lete hain bhai.
 
 ~Anshul </p>
-          <p>Select a note from the sidebar (left side wala) to start reading.</p>
+            <p>Select a note from the sidebar (left side wala) to start reading.</p>
+          </div>
+          <hr class="welcome-divider">
+          <div class="welcome-section-title">Recent Notes</div>
+          <div class="recent-notes-grid" id="recentNotesGrid">
+            <div class="skeleton recent-note-card">
+              <div class="skeleton-line w-80"></div>
+              <div class="skeleton-line w-40"></div>
+            </div>
+            <div class="skeleton recent-note-card">
+              <div class="skeleton-line w-80"></div>
+              <div class="skeleton-line w-40"></div>
+            </div>
+            <div class="skeleton recent-note-card">
+              <div class="skeleton-line w-80"></div>
+              <div class="skeleton-line w-40"></div>
+            </div>
+          </div>
         </div>
       </div>
       <div class="resizer" id="rightResizer" style="display:none;"></div>
@@ -85,6 +109,11 @@ ab padhl lete hain bhai.
     </div>
   </main>
 </div>
+
+<!-- Back to Top Button -->
+<button class="back-to-top" id="backToTop" title="Back to top">
+  <i data-lucide="chevron-up"></i>
+</button>
 
 <div class="toast-wrap" id="toastWrap"></div>
 

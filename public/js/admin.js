@@ -41,30 +41,50 @@ document.addEventListener('DOMContentLoaded', async () => {
     
     if (isPreviewMode) {
       btn.innerHTML = '<i data-lucide="edit-2" style="width:14px;height:14px;"></i> Edit';
-      cmWrap.style.display = 'none';
-      prevWrap.style.display = 'block';
       
-      const md = editorView.state.doc.toString();
-      if (typeof marked !== 'undefined') {
-        let processed = md.replace(
-          /^> \[!(\w+)\](.*)\n((?:>.*\n?)*)/gm,
-          (_, type, title, content) => {
-            const t = type.toLowerCase();
-            const tl = title.trim() || (t.charAt(0).toUpperCase() + t.slice(1));
-            const body = content.replace(/^> ?/gm, '').trim();
-            return `<div class="callout callout-${t}"><div class="callout-title">${esc(tl)}</div><div class="callout-content">${body}</div></div>\n`;
-          }
-        );
-        prevWrap.innerHTML = marked.parse(processed, { gfm: true, breaks: true });
-      } else {
-        prevWrap.innerHTML = '<p>Marked.js not loaded.</p>';
-      }
-      updateOutlineFromDOM(prevWrap);
+      // Fade out editor, then show preview
+      cmWrap.style.opacity = '0';
+      setTimeout(() => {
+        cmWrap.style.display = 'none';
+        
+        const md = editorView.state.doc.toString();
+        if (typeof marked !== 'undefined') {
+          let processed = md.replace(
+            /^> \[!(\w+)\](.*)\n((?:>.*\n?)*)/gm,
+            (_, type, title, content) => {
+              const t = type.toLowerCase();
+              const tl = title.trim() || (t.charAt(0).toUpperCase() + t.slice(1));
+              const body = content.replace(/^> ?/gm, '').trim();
+              return `<div class="callout callout-${t}"><div class="callout-title">${esc(tl)}</div><div class="callout-content">${body}</div></div>\n`;
+            }
+          );
+          prevWrap.innerHTML = marked.parse(processed, { gfm: true, breaks: true });
+        } else {
+          prevWrap.innerHTML = '<p>Marked.js not loaded.</p>';
+        }
+        
+        prevWrap.style.display = 'block';
+        prevWrap.style.opacity = '0';
+        requestAnimationFrame(() => {
+          prevWrap.style.opacity = '1';
+        });
+        
+        updateOutlineFromDOM(prevWrap);
+      }, 250);
     } else {
       btn.innerHTML = '<i data-lucide="eye" style="width:14px;height:14px;"></i> Preview';
-      cmWrap.style.display = 'block';
-      prevWrap.style.display = 'none';
-      updateOutline(editorView.state.doc.toString());
+      
+      // Fade out preview, then show editor
+      prevWrap.style.opacity = '0';
+      setTimeout(() => {
+        prevWrap.style.display = 'none';
+        cmWrap.style.display = 'block';
+        cmWrap.style.opacity = '0';
+        requestAnimationFrame(() => {
+          cmWrap.style.opacity = '1';
+        });
+        updateOutline(editorView.state.doc.toString());
+      }, 250);
     }
     if (window.lucide) window.lucide.createIcons();
   });
@@ -425,6 +445,7 @@ async function openNote(notePath) {
     }
     
     updateOutline(note.content);
+    updateWordCount(note.content);
   } catch (err) {
     toast('Failed to open note', 'error');
   }
@@ -482,7 +503,17 @@ function handleEditorEvent(type) {
     saveTimeout = setTimeout(() => saveNote(), 3000); // auto-save after 3s
     
     updateOutline(getContent(editorView));
+    updateWordCount(getContent(editorView));
   }
+}
+
+function updateWordCount(content) {
+  const wordCountEl = document.getElementById('wordCount');
+  if (!wordCountEl) return;
+  
+  const words = content ? content.split(/\s+/).filter(w => w.length > 0).length : 0;
+  const chars = content ? content.length : 0;
+  wordCountEl.textContent = `${words} words · ${chars} chars`;
 }
 
 function showEditor() {
@@ -607,7 +638,10 @@ async function saveNote() {
     currentNote.content  = content;
     currentNote.title    = title;
     isDirty = false;
-    status.textContent = '✓ Saved';
+    
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    status.textContent = `✓ Saved at ${timeStr}`;
     status.className = 'save-status saved';
 
     // Refresh tree label

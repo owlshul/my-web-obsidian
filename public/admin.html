@@ -17,6 +17,12 @@
     body.theme-dark .editor-cm-wrap .cm-gutters { background: #181512; border-color: var(--border); }
     .main { flex-direction: row; }
     .editor-wrap { border-left: 1px solid var(--border); }
+    
+    /* Smooth preview transition */
+    #editorCmWrap,
+    #previewWrap {
+      transition: opacity 0.25s ease;
+    }
   </style>
 </head>
 <body class="theme-dark">
@@ -83,6 +89,7 @@
           <span id="visLabel">Private</span>
         </div>
         <span class="save-status" id="saveStatus">All saved</span>
+        <span class="word-count" id="wordCount"></span>
         <button class="btn btn-primary" id="saveBtn">Save</button>
         <button class="btn-icon topbar-toggle" id="rightSidebarToggle" title="Toggle outline"><i data-lucide="panel-right"></i></button>
       </div>

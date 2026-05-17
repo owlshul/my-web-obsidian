@@ -18,7 +18,7 @@
   display: flex;
   flex-direction: column;
   overflow: hidden;
-  transition: width .22s ease, min-width .22s ease;
+  transition: width 0.3s cubic-bezier(0.4, 0, 0.2, 1), min-width 0.3s cubic-bezier(0.4, 0, 0.2, 1);
   flex-shrink: 0;
 }
 
@@ -26,6 +26,7 @@
   width: 0;
   min-width: 0;
   border-right: none;
+  opacity: 0;
 }
 
 .sidebar-header {
@@ -91,12 +92,14 @@
   padding: .4rem .65rem;
   border-bottom: 1px solid var(--border);
   flex-shrink: 0;
+  position: relative;
 }
 
 .sidebar-search input {
   font-size: .8rem;
   padding: .3rem .6rem;
   background: var(--bg-tertiary);
+  padding-right: 50px;
 }
 
 /* ─── File Tree ───────────────────────────────────────────────────────────── */
@@ -165,6 +168,16 @@
   white-space: nowrap;
 }
 
+.folder-badge {
+  font-size: 0.65rem;
+  color: var(--text-faint);
+  background: var(--bg-tertiary);
+  padding: 0.1rem 0.35rem;
+  border-radius: 99px;
+  flex-shrink: 0;
+  font-weight: 500;
+}
+
 .tree-folder-children {
   padding-left: .7rem;
   border-left: 1px solid var(--border);
@@ -198,6 +211,7 @@
   background: var(--bg-active);
   color: var(--text-normal);
   border-right: 2px solid var(--accent);
+  transition: border-right 0.2s ease, background 0.15s ease, color 0.15s ease;
 }
 
 .note-icon {
@@ -320,7 +334,7 @@
   background: transparent;
   cursor: col-resize;
   flex-shrink: 0;
-  transition: background .2s;
+  transition: background 0.2s ease;
   z-index: 10;
 }
 
@@ -426,12 +440,21 @@
   animation: fadeIn .25s ease;
 }
 
+.welcome-hero {
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 1rem;
+  padding: 2rem 1rem;
+}
+
 .welcome-logo {
   display: flex;
   align-items: center;
   justify-content: center;
   color: var(--text-normal);
   margin-bottom: .25rem;
+  animation: floatLeaf 6s ease-in-out infinite;
 }
 
 .welcome-logo svg {
@@ -455,6 +478,23 @@
   font-family: var(--font-ui);
 }
 
+.welcome-divider {
+  width: 40px;
+  height: 2px;
+  background: var(--border);
+  border: none;
+  margin: 0.5rem 0;
+}
+
+.welcome-section-title {
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.08em;
+  color: var(--text-faint);
+  margin-bottom: 0.25rem;
+}
+
 /* ─── Note View ───────────────────────────────────────────────────────────── */
 .note-header {
   margin-bottom: 1.35rem;
@@ -476,6 +516,18 @@
   font-size: .78rem;
   color: var(--text-faint);
   font-family: var(--font-ui);
+  flex-wrap: wrap;
+}
+
+.note-meta-item {
+  display: flex;
+  align-items: center;
+  gap: 0.3rem;
+}
+
+.note-meta-item svg {
+  width: 13px;
+  height: 13px;
 }
 
 .note-divider {
@@ -574,6 +626,19 @@
 .save-status.saving {
   color: var(--accent);
   animation: pulse 1s infinite;
+}
+
+.word-count {
+  font-size: .7rem;
+  color: var(--text-faint);
+  font-family: var(--font-ui);
+  margin-left: 0.5rem;
+}
+
+/* ─── Preview Transition ──────────────────────────────────────────────────── */
+#editorCmWrap,
+#previewWrap {
+  transition: opacity 0.25s ease;
 }
 
 /* ─── Toolbar ─────────────────────────────────────────────────────────────── */
@@ -776,6 +841,14 @@
 
 body.theme-dark .login-page {
   background: radial-gradient(ellipse at top left, hsl(28, 12%, 14%) 0%, hsl(30, 10%, 11%) 60%);
+  background-size: 200% 200%;
+  animation: loginGradient 15s ease infinite;
+}
+
+@keyframes loginGradient {
+  0% { background-position: 0% 50%; }
+  50% { background-position: 100% 50%; }
+  100% { background-position: 0% 50%; }
 }
 
 .login-card {
@@ -837,6 +910,39 @@ body.theme-dark .login-page {
   font-size: .9rem;
 }
 
+.password-wrapper {
+  position: relative;
+}
+
+.password-wrapper input {
+  padding-right: 2.5rem;
+}
+
+.password-toggle {
+  position: absolute;
+  right: 0.5rem;
+  top: 50%;
+  transform: translateY(-50%);
+  background: none;
+  border: none;
+  color: var(--text-faint);
+  cursor: pointer;
+  padding: 0.25rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: color 0.12s;
+}
+
+.password-toggle:hover {
+  color: var(--text-normal);
+}
+
+.password-toggle svg {
+  width: 16px;
+  height: 16px;
+}
+
 /* ─── Toasts ──────────────────────────────────────────────────────────────── */
 .toast-wrap {
   position: fixed;
@@ -862,6 +968,7 @@ body.theme-dark .login-page {
   align-items: center;
   gap: .45rem;
   color: var(--text-normal);
+  transition: opacity 0.25s ease, transform 0.25s ease;
 }
 
 .toast.success {
@@ -938,6 +1045,38 @@ body.theme-dark .login-page {
 
   .resizer {
     display: none;
+  }
+
+  .btn-icon {
+    min-width: 44px;
+    min-height: 44px;
+  }
+
+  .breadcrumb {
+    overflow-x: auto;
+    -webkit-overflow-scrolling: touch;
+    scrollbar-width: none;
+    flex-shrink: 1;
+    min-width: 0;
+  }
+
+  .breadcrumb::-webkit-scrollbar {
+    display: none;
+  }
+
+  .breadcrumb a,
+  .breadcrumb span {
+    white-space: nowrap;
+    flex-shrink: 0;
+  }
+
+  .recent-notes-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .back-to-top {
+    bottom: 1rem;
+    right: 1rem;
   }
 }
 

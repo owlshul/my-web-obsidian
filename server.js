@@ -396,6 +396,25 @@ app.post('/api/rename', requireAdmin, async (req, res) => {
   }
 });
 
+// ─── Recent Notes ─────────────────────────────────────────────────────────────
+app.get('/api/recent', async (req, res) => {
+  try {
+    const notes = await Note.find({ visibility: 'public' })
+      .sort({ updated: -1 })
+      .limit(6)
+      .lean();
+    res.json(notes.map(n => ({
+      path: n.path,
+      title: n.title || n.path.replace('.md', '').split('/').pop(),
+      updated: n.updated,
+      created: n.created
+    })));
+  } catch (err) {
+    console.error('Recent notes error:', err);
+    res.status(500).json({ error: 'Internal error' });
+  }
+});
+
 // ─── Markdown render ─────────────────────────────────────────────────────────
 app.post('/api/render', (req, res) => {
   const { content } = req.body;
