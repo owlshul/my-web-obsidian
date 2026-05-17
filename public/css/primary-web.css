@@ -33,11 +33,11 @@
 
   /* ─────────────────── LIGHT THEME ─────────────────── */
   /* Backgrounds — warm paper, yellowing magazine pages */
-  --bg-primary:     hsl(36,  38%, 98%);       /* checklist bg: hsla(36,38%,98%,1) */
-  --bg-secondary:   hsl(37,  38%, 93%);       /* warm off-white */
-  --bg-tertiary:    hsl(35,  28%, 88%);       /* slightly darker warm */
-  --bg-sidebar:     hsl(34,  25%, 91%);       /* sidebar warm */
-  --bg-hover:       hsl(34,  29%, 83%);
+  --bg-primary:     hsl(36,  30%, 95.5%);     /* reader-friendly warm paper off-white */
+  --bg-secondary:   hsl(37,  30%, 91%);       /* warm off-white shadow/panels */
+  --bg-tertiary:    hsl(35,  22%, 86%);       /* slightly deeper warm paper */
+  --bg-sidebar:     hsl(34,  20%, 89%);       /* sidebar soft warm grey-cream */
+  --bg-hover:       hsl(34,  24%, 81%);
   --bg-active:      hsla(43, 83%, 57%, 0.14);
 
   /* Text — warm dark brown tones */
@@ -64,7 +64,7 @@
   --scrollbar:  hsl(34, 29%, 72%);
 
   /* Solid backgrounds (was Glassmorphism) */
-  --glass-bg: hsl(36, 38%, 98%);
+  --glass-bg: hsl(36, 30%, 95.5%);
   --glass-border: hsl(37, 38%, 83%);
   --glass-blur: 0px;
 }
