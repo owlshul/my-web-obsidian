@@ -20,42 +20,46 @@ echo ""
 
 # Check if there are actually any changes
 CHANGES=$(git status --porcelain)
+AHEAD=$(git log origin/main..HEAD 2>/dev/null)
 
-if [ -z "$CHANGES" ]; then
+if [ -z "$CHANGES" ] && [ -z "$AHEAD" ]; then
     echo -e "${GREEN}✓ Everything is already up-to-date!${NC}"
-    echo "No local changes detected in your workspace."
+    echo "No local changes or unpushed commits detected."
     echo ""
     echo "Closing in 3 seconds..."
     sleep 3
     exit 0
 fi
 
-echo -e "${YELLOW}Detected the following changes:${NC}"
-git status -s
-echo ""
-echo -e "${CYAN}-----------------------------------------------${NC}"
+if [ -n "$AHEAD" ]; then
+    echo -e "${YELLOW}You have local commits that need to be pushed to the live site.${NC}"
+fi
 
-# Ask for a commit message, default to auto-generated timestamp
-echo -e "Enter a short update description (optional):"
-read -r -p "> " MSG
+if [ -n "$CHANGES" ]; then
+    echo -e "${YELLOW}Detected the following uncommitted changes:${NC}"
+    git status -s
+    echo ""
+    echo -e "${CYAN}-----------------------------------------------${NC}"
 
-if [ -z "$MSG" ]; then
-    TIMESTAMP=$(date "+%b %d, %Y at %I:%M %p")
-    MSG="Automatic update on $TIMESTAMP"
+    # Ask for a commit message, default to auto-generated timestamp
+    echo -e "Enter a short update description (optional):"
+    read -r -p "> " MSG
+
+    if [ -z "$MSG" ]; then
+        TIMESTAMP=$(date "+%b %d, %Y at %I:%M %p")
+        MSG="Automatic update on $TIMESTAMP"
+    fi
+
+    echo ""
+    echo -e "${CYAN}🚀 Staging & committing changes...${NC}"
+    git add .
+    git commit -m "$MSG"
 fi
 
 echo ""
-echo -e "${CYAN}🚀 Starting deployment...${NC}"
+echo -e "${YELLOW}Uploading to GitHub & Vercel...${NC}"
 echo ""
 
-# Run git commands
-echo -e "${YELLOW}[1/3] Staging changes...${NC}"
-git add .
-
-echo -e "${YELLOW}[2/3] Creating commit...${NC}"
-git commit -m "$MSG"
-
-echo -e "${YELLOW}[3/3] Uploading to GitHub & Vercel...${NC}"
 git push origin main
 
 if [ $? -eq 0 ]; then
