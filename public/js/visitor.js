@@ -20,6 +20,11 @@ function collapseSidebarsOnMobile() {
 document.addEventListener('DOMContentLoaded', () => {
   if (window.lucide) window.lucide.createIcons();
   
+  // Ensure page starts at top on load
+  window.scrollTo(0, 0);
+  document.documentElement.scrollTop = 0;
+  document.body.scrollTop = 0;
+  
   // Collapse sidebars on mobile by default
   if (window.innerWidth <= 640) {
     document.getElementById('sidebar')?.classList.add('collapsed');
@@ -27,7 +32,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   applyTheme();
-  loadRecentNotes();
   loadTree().then(() => {
     // Handle direct URL like /note/folder/file
     const pathMatch = window.location.pathname.match(/^\/note\/(.+)$/);
@@ -36,6 +40,120 @@ document.addEventListener('DOMContentLoaded', () => {
       openNote(notePath);
     }
   });
+
+  document.getElementById('toggleTheme').addEventListener('click', () => {
+    isDark = !isDark;
+    localStorage.setItem('theme', isDark ? 'dark' : 'light');
+    applyTheme();
+  });
+
+  document.getElementById('sidebarToggle').addEventListener('click', () => {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('collapsed');
+    sidebar.classList.remove('peeking');
+  });
+
+  document.getElementById('rightSidebarToggle')?.addEventListener('click', () => {
+    const outlinePane = document.getElementById('outlinePane');
+    outlinePane.classList.toggle('collapsed');
+    outlinePane.classList.remove('peeking');
+  });
+
+  document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
+    window.print();
+  });
+
+  document.getElementById('backToTop')?.addEventListener('click', () => {
+    document.getElementById('contentPane')?.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  initResizers();
+  initReadingProgress();
+  initSwipeGestures();
+
+  // Mobile: click anywhere outside sidebar closes it
+  document.body.addEventListener('click', (e) => {
+    if (window.innerWidth <= 640) {
+      const sidebar = document.getElementById('sidebar');
+      const sidebarRight = document.getElementById('outlinePane');
+      const toggleBtn = e.target.closest('#sidebarToggle');
+      const rightToggleBtn = e.target.closest('#rightSidebarToggle');
+      const sidebarContent = e.target.closest('.sidebar');
+      const rightSidebarContent = e.target.closest('.sidebar-right');
+      
+      // Close left sidebar if clicking outside and it's not the toggle
+      if (sidebar && !sidebar.classList.contains('collapsed') && !toggleBtn && !sidebarContent) {
+        sidebar.classList.add('collapsed');
+      }
+      // Close right sidebar if clicking outside and it's not the toggle
+      if (sidebarRight && !sidebarRight.classList.contains('collapsed') && !rightToggleBtn && !rightSidebarContent) {
+        sidebarRight.classList.add('collapsed');
+      }
+    }
+  });
+
+  // Mobile sidebar dismissal on content area click (explicit)
+  document.getElementById('mainArea')?.addEventListener('click', (e) => {
+    if (window.innerWidth <= 640 && !e.target.closest('.topbar-toggle')) {
+      collapseSidebarsOnMobile();
+    }
+  });
+
+  // Desktop Hover-to-Open Sidebar Peek
+  document.addEventListener('mousemove', e => {
+    if (window.innerWidth <= 640) return;
+    
+    if (e.clientX <= 20) {
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar && sidebar.classList.contains('collapsed') && !sidebar.classList.contains('peeking')) {
+        sidebar.classList.add('peeking');
+      }
+    }
+    
+    if (window.innerWidth - e.clientX <= 20) {
+      const outlinePane = document.getElementById('outlinePane');
+      if (outlinePane && outlinePane.classList.contains('collapsed') && !outlinePane.classList.contains('hidden') && !outlinePane.classList.contains('peeking')) {
+        outlinePane.classList.add('peeking');
+      }
+    }
+  });
+
+  document.getElementById('sidebar')?.addEventListener('mouseleave', () => {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar && sidebar.classList.contains('peeking')) {
+      sidebar.classList.remove('peeking');
+    }
+  });
+
+  document.getElementById('outlinePane')?.addEventListener('mouseleave', () => {
+    const outlinePane = document.getElementById('outlinePane');
+    if (outlinePane && outlinePane.classList.contains('peeking')) {
+      outlinePane.classList.remove('peeking');
+    }
+  });
+
+  document.getElementById('searchInput').addEventListener('input', e => {
+    clearTimeout(searchTimeout);
+    searchTimeout = setTimeout(() => filterTree(e.target.value.trim()), 200);
+  });
+
+  // Keyboard shortcut for search
+  document.addEventListener('keydown', e => {
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      document.getElementById('searchInput')?.focus();
+    }
+    if (e.key === 'Escape') {
+      document.getElementById('searchInput')?.blur();
+    }
+  });
+
+  window.addEventListener('popstate', () => {
+    const m = window.location.pathname.match(/^\/note\/(.+)$/);
+    if (m) openNote(m[1] + (m[1].endsWith('.md') ? '' : '.md'));
+    else showWelcome();
+  });
+});
 
   document.getElementById('toggleTheme').addEventListener('click', () => {
     isDark = !isDark;
@@ -147,50 +265,6 @@ function updateKbdHint() {
   if (!hint) return;
   const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
   hint.innerHTML = `<kbd>${isMac ? '⌘' : 'Ctrl'}K</kbd>`;
-}
-
-// ─── Recent Notes ────────────────────────────────────────────────────────────
-async function loadRecentNotes() {
-  try {
-    const res = await fetch('/api/recent');
-    if (!res.ok) throw new Error();
-    const notes = await res.json();
-    renderRecentNotes(notes);
-  } catch {
-    const grid = document.getElementById('recentNotesGrid');
-    if (grid) grid.innerHTML = '<p style="font-size:0.82rem;color:var(--text-faint)">No recent notes</p>';
-  }
-}
-
-function renderRecentNotes(notes) {
-  const grid = document.getElementById('recentNotesGrid');
-  if (!grid) return;
-  
-  if (!notes.length) {
-    grid.innerHTML = '<p style="font-size:0.82rem;color:var(--text-faint)">No public notes yet</p>';
-    return;
-  }
-
-  grid.innerHTML = '';
-  notes.forEach(note => {
-    const card = document.createElement('div');
-    card.className = 'recent-note-card';
-    
-    const updated = note.updated ? new Date(note.updated).toLocaleDateString('en-US', { month: 'short', day: 'numeric' }) : '';
-    
-    card.innerHTML = `
-      <h4>${esc(note.title)}</h4>
-      <div class="card-meta">
-        <i data-lucide="clock" style="width:12px;height:12px;"></i>
-        <span>${updated}</span>
-      </div>
-    `;
-    
-    card.addEventListener('click', () => openNote(note.path));
-    grid.appendChild(card);
-  });
-  
-  if (window.lucide) window.lucide.createIcons({ root: grid });
 }
 
 // ─── Tree Loading ─────────────────────────────────────────────────────────────
@@ -410,28 +484,11 @@ function showWelcome() {
         <h2>Welcome to My Notes</h2>
         <p>Select a note from the sidebar to start reading.</p>
       </div>
-      <hr class="welcome-divider">
-      <div class="welcome-section-title">Recent Notes</div>
-      <div class="recent-notes-grid" id="recentNotesGrid">
-        <div class="skeleton recent-note-card">
-          <div class="skeleton-line w-80"></div>
-          <div class="skeleton-line w-40"></div>
-        </div>
-        <div class="skeleton recent-note-card">
-          <div class="skeleton-line w-80"></div>
-          <div class="skeleton-line w-40"></div>
-        </div>
-        <div class="skeleton recent-note-card">
-          <div class="skeleton-line w-80"></div>
-          <div class="skeleton-line w-40"></div>
-        </div>
-      </div>
     </div>`;
   document.querySelectorAll('.tree-note').forEach(el => el.classList.remove('active'));
   const outlinePane = document.getElementById('outlinePane');
   if (outlinePane) outlinePane.classList.add('hidden');
   resetReadingProgress();
-  loadRecentNotes();
 }
 
 // ─── Code Block Wrapper with Copy Button ─────────────────────────────────────
