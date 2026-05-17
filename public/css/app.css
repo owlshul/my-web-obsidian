@@ -963,3 +963,90 @@ body.theme-dark .note-body h6 {
 .note-body i {
   color: #3B7197;
 }
+
+/* ─── Premium Selection Styling (Sidebar Multi-Select) ───────────────────── */
+.tree-note.selected,
+.tree-folder-header.selected {
+  background-color: var(--bg-active) !important;
+  border-left: 3px solid var(--accent) !important;
+  box-shadow: inset 0 0 0 1px rgba(var(--accent), 0.1);
+  font-weight: 500;
+}
+
+/* ─── Premium Distraction-Free PDF Export Styles ─────────────────────────── */
+@media print {
+  /* Hide sidebars, toolbar, outline, header, resizers, toggle buttons, and modal dialogs */
+  #sidebar,
+  .left-resizer,
+  .right-resizer,
+  .sidebar-right,
+  .editor-header,
+  #sidebarToggle,
+  #rightSidebarToggle,
+  .toast-wrap,
+  .modal-overlay,
+  .editor-toolbar,
+  .note-item-actions,
+  .tree-item-actions,
+  #exportPdfBtn,
+  #previewToggleBtn,
+  #saveBtn,
+  .save-status {
+    display: none !important;
+  }
+  
+  /* Force single-column absolute full-page width layout without padding/borders */
+  .app-container,
+  .main-layout,
+  .main-content,
+  .content-pane {
+    display: block !important;
+    position: static !important;
+    width: 100% !important;
+    height: auto !important;
+    margin: 0 !important;
+    padding: 0 !important;
+    background: #fff !important;
+    color: #000 !important;
+    box-shadow: none !important;
+  }
+
+  body {
+    background: #fff !important;
+    color: #000 !important;
+    font-size: 12pt !important;
+    line-height: 1.6 !important;
+  }
+
+  /* Only display the beautiful rendered HTML preview, hide the code editor */
+  #editorCmWrap {
+    display: none !important;
+  }
+
+  #previewWrap {
+    display: block !important;
+    width: 100% !important;
+    height: auto !important;
+    overflow: visible !important;
+    position: static !important;
+    padding: 0 !important;
+    margin: 0 !important;
+  }
+
+  /* Gorgeous serif typography and layout with perfect margins */
+  .preview-wrap {
+    font-family: 'Source Serif 4', Georgia, serif !important;
+    padding: 1.5in !important;
+    color: #111 !important;
+    background: transparent !important;
+  }
+
+  .note-body h1, .note-body h2, .note-body h3, .note-body h4, .note-body h5, .note-body h6 {
+    color: #000 !important;
+    page-break-after: avoid;
+  }
+
+  pre, blockquote {
+    page-break-inside: avoid;
+  }
+}

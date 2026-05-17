@@ -12,6 +12,10 @@ let isDirty = false;
 let saveTimeout = null;
 let isDark = localStorage.getItem('theme') !== 'light';
 
+// Multi-select and outline state tracking
+let selectedPaths = new Set();
+let lastClickedPath = null;
+
 // ─── Boot ────────────────────────────────────────────────────────────────────
 document.addEventListener('DOMContentLoaded', async () => {
   // Auth check
@@ -66,6 +70,11 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   await loadTree();
   bindUI();
+
+  // Fast boot: automatically create and open a blank note if no note is active
+  if (!currentNote) {
+    await createAndOpenUntitled();
+  }
 });
 
 // ─── Theme ───────────────────────────────────────────────────────────────────
@@ -154,6 +163,82 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 });
 
+function toggleSelection(path, element, isMulti, isRange) {
+  if (!isMulti && !isRange) {
+    // Clear all other selections
+    document.querySelectorAll('.tree-note, .tree-folder-header').forEach(el => el.classList.remove('selected'));
+    selectedPaths.clear();
+  }
+
+  if (isRange && lastClickedPath) {
+    const allItems = Array.from(document.querySelectorAll('.tree-note, .tree-folder-header'));
+    let startIdx = allItems.findIndex(el => el.dataset.path === lastClickedPath || el.parentElement.dataset.path === lastClickedPath);
+    let endIdx = allItems.findIndex(el => el.dataset.path === path || el.parentElement.dataset.path === path);
+    if (startIdx !== -1 && endIdx !== -1) {
+      const min = Math.min(startIdx, endIdx);
+      const max = Math.max(startIdx, endIdx);
+      for (let i = min; i <= max; i++) {
+        const itemEl = allItems[i];
+        const itemPath = itemEl.dataset.path || itemEl.parentElement.dataset.path;
+        if (itemPath) {
+          selectedPaths.add(itemPath);
+          itemEl.classList.add('selected');
+        }
+      }
+    }
+  } else {
+    if (selectedPaths.has(path)) {
+      selectedPaths.delete(path);
+      element.classList.remove('selected');
+    } else {
+      selectedPaths.add(path);
+      element.classList.add('selected');
+    }
+  }
+
+  lastClickedPath = path;
+}
+
+// Global keydown for deleting selected items
+document.addEventListener('keydown', async e => {
+  if (
+    document.activeElement.tagName === 'INPUT' ||
+    document.activeElement.tagName === 'TEXTAREA' ||
+    document.activeElement.closest('.cm-editor')
+  ) {
+    return;
+  }
+
+  if (e.key === 'Delete' || (e.shiftKey && e.key === 'Backspace')) {
+    if (selectedPaths.size > 0) {
+      e.preventDefault();
+      const count = selectedPaths.size;
+      const msg = `Are you sure you want to delete the ${count} selected item(s)?`;
+      showModal(
+        'Delete Selected Items',
+        `<p style="color:var(--text-normal)">${msg}</p>`,
+        'Delete All',
+        async () => {
+          for (const itemPath of selectedPaths) {
+            const isNote = itemPath.endsWith('.md');
+            const url = isNote ? '/api/note/' + itemPath : '/api/folder/' + itemPath;
+            await fetch(url, { method: 'DELETE' });
+          }
+          selectedPaths.clear();
+          toast(`Deleted ${count} item(s)`, 'success');
+          await loadTree();
+          showWelcome();
+        }
+      );
+      const confirmBtn = document.getElementById('modalConfirm');
+      if (confirmBtn) {
+        confirmBtn.style.background = 'var(--primary-red)';
+        confirmBtn.style.borderColor = 'var(--primary-red)';
+      }
+    }
+  }
+});
+
 function buildNode(node) {
   return node.type === 'folder' ? buildFolder(node) : buildNoteItem(node);
 }
@@ -186,12 +271,20 @@ function buildFolder(folder) {
 
   header.addEventListener('click', e => {
     if (e.target.closest('[data-action]')) return;
-    const ch = header.querySelector('.folder-chevron');
-    const open = ch.classList.toggle('open');
-    children.style.display = open ? '' : 'none';
-    const iconSpan = header.querySelector('.folder-icon');
-    iconSpan.innerHTML = `<i data-lucide="${open ? 'folder-open' : 'folder'}" style="width:14px;height:14px;"></i>`;
-    if (window.lucide) window.lucide.createIcons({ root: iconSpan });
+    
+    const isMulti = e.ctrlKey || e.metaKey;
+    const isRange = e.shiftKey;
+    
+    toggleSelection(folder.path, header, isMulti, isRange);
+    
+    if (!isMulti && !isRange) {
+      const ch = header.querySelector('.folder-chevron');
+      const open = ch.classList.toggle('open');
+      children.style.display = open ? '' : 'none';
+      const iconSpan = header.querySelector('.folder-icon');
+      iconSpan.innerHTML = `<i data-lucide="${open ? 'folder-open' : 'folder'}" style="width:14px;height:14px;"></i>`;
+      if (window.lucide) window.lucide.createIcons({ root: iconSpan });
+    }
   });
 
   header.addEventListener('contextmenu', e => {
@@ -251,7 +344,15 @@ function buildNoteItem(note) {
 
   el.addEventListener('click', e => {
     if (e.target.closest('[data-action]')) return;
-    openNote(note.path);
+    
+    const isMulti = e.ctrlKey || e.metaKey;
+    const isRange = e.shiftKey;
+    
+    toggleSelection(note.path, el, isMulti, isRange);
+    
+    if (!isMulti && !isRange) {
+      openNote(note.path);
+    }
   });
 
   el.addEventListener('contextmenu', e => {
@@ -285,6 +386,17 @@ async function openNote(notePath) {
 
   const np = notePath.endsWith('.md') ? notePath : notePath + '.md';
 
+  // Auto-cleanup previous empty Untitled note before loading next
+  if (currentNote && currentNote.path !== np) {
+    const prevContent = editorView ? editorView.state.doc.toString().trim() : '';
+    if (currentNote.title.startsWith('Untitled') && !prevContent) {
+      const oldPath = currentNote.path;
+      fetch('/api/note/' + oldPath, { method: 'DELETE' }).then(() => {
+        loadTree();
+      });
+    }
+  }
+
   // Mark active
   document.querySelectorAll('.tree-note').forEach(el => {
     el.classList.toggle('active', el.dataset.path === np);
@@ -317,6 +429,48 @@ async function openNote(notePath) {
     toast('Failed to open note', 'error');
   }
 }
+
+async function createAndOpenUntitled() {
+  let base = 'Untitled';
+  let count = 0;
+  let name = base;
+  
+  const exists = (nodes, path) => {
+    for (const n of nodes) {
+      if (n.path === path || n.path === path + '.md') return true;
+      if (n.children && exists(n.children, path)) return true;
+    }
+    return false;
+  };
+  
+  while (exists(tree, name)) {
+    count++;
+    name = `${base} ${count}`;
+  }
+
+  const res = await fetch('/api/note', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: name, title: name, visibility: 'private', content: '' }),
+  });
+  if (res.ok) {
+    await loadTree();
+    await openNote(name + '.md');
+    setTimeout(() => {
+      if (editorView) editorView.focus();
+    }, 150);
+  }
+}
+
+// Keepalive background cleanup on page unload/close
+window.addEventListener('pagehide', () => {
+  if (currentNote && currentNote.title.startsWith('Untitled')) {
+    const prevContent = editorView ? editorView.state.doc.toString().trim() : '';
+    if (!prevContent) {
+      fetch('/api/note/' + currentNote.path, { method: 'DELETE', keepalive: true });
+    }
+  }
+});
 
 function handleEditorEvent(type) {
   if (type === 'save') { saveNote(); return; }
@@ -554,10 +708,34 @@ function showModal(title, bodyHTML, confirmText, onConfirm) {
   const confirmBtn = document.getElementById('modalConfirm');
   const newConfirm = confirmBtn.cloneNode(true);
   confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
-  newConfirm.addEventListener('click', () => {
+
+  const cancelBtn = document.getElementById('modalCancel');
+  const newCancel = cancelBtn.cloneNode(true);
+  cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+
+  const cleanup = () => {
     document.getElementById('modalOverlay').style.display = 'none';
+    document.removeEventListener('keydown', handleKeydown);
+  };
+
+  const submit = () => {
+    cleanup();
     onConfirm();
-  });
+  };
+
+  newConfirm.addEventListener('click', submit);
+  newCancel.addEventListener('click', cleanup);
+
+  function handleKeydown(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submit();
+    } else if (e.key === 'Escape') {
+      cleanup();
+    }
+  }
+
+  document.addEventListener('keydown', handleKeydown);
 }
 
 function showNewNoteModal(inFolder = '') {
@@ -725,6 +903,19 @@ function bindUI() {
     const btn = e.target.closest('.toolbar-btn');
     if (!btn) return;
     applyToolbarAction(editorView, btn.dataset.action);
+  });
+
+  // PDF Export
+  document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
+    if (!currentNote) return;
+    // Switch to preview mode to render markdown as beautiful HTML
+    if (!isPreviewMode) {
+      document.getElementById('previewToggleBtn')?.click();
+    }
+    // Let browser render the preview layout, then open print dialog
+    setTimeout(() => {
+      window.print();
+    }, 150);
   });
 
   // Theme
