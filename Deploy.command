@@ -23,15 +23,25 @@ CHANGES=$(git status --porcelain)
 AHEAD=$(git log origin/main..HEAD 2>/dev/null)
 
 if [ -z "$CHANGES" ] && [ -z "$AHEAD" ]; then
-    echo -e "${GREEN}✓ Everything is already up-to-date!${NC}"
-    echo "No local changes or unpushed commits detected."
+    echo -e "${YELLOW}Everything is already up-to-date!${NC}"
+    echo "No new changes or unpushed files detected."
     echo ""
-    echo "Closing in 3 seconds..."
-    sleep 3
-    exit 0
+    echo -e "Would you like to ${CYAN}[F]orce Re-publish${NC} all files and trigger a fresh build? (y/n)"
+    read -r -p "> " FORCE_RESP
+    
+    if [[ "$FORCE_RESP" =~ ^[Yy]$ ]]; then
+        echo ""
+        echo -e "${CYAN}🚀 Triggering a fresh, clean rebuild...${NC}"
+        git commit --allow-empty -m "Force Re-publish: Fresh Build"
+    else
+        echo ""
+        echo "Exiting..."
+        sleep 2
+        exit 0
+    fi
 fi
 
-if [ -n "$AHEAD" ]; then
+if [ -n "$AHEAD" ] && [ -z "$CHANGES" ]; then
     echo -e "${YELLOW}You have local commits that need to be pushed to the live site.${NC}"
 fi
 
