@@ -993,6 +993,8 @@ function bindUI() {
     const icon = fsBtn.querySelector('i');
     if (document.fullscreenElement) {
       document.body.classList.add('is-fullscreen');
+      document.getElementById('sidebar')?.classList.add('collapsed');
+      document.getElementById('outlinePane')?.classList.add('collapsed');
       fsBtn.title = 'Exit fullscreen';
       if (icon) {
         icon.setAttribute('data-lucide', 'minimize');
