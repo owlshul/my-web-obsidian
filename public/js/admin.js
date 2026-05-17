@@ -972,6 +972,42 @@ function bindUI() {
   // Save
   document.getElementById('saveBtn').addEventListener('click', saveNote);
 
+  // Fullscreen
+  const fsBtn = document.getElementById('fullscreenBtn');
+  if (fsBtn) {
+    fsBtn.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.error(`Error enabling fullscreen: ${err.message}`);
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    });
+  }
+
+  document.addEventListener('fullscreenchange', () => {
+    const fsBtn = document.getElementById('fullscreenBtn');
+    if (!fsBtn) return;
+    
+    const icon = fsBtn.querySelector('i');
+    if (document.fullscreenElement) {
+      document.body.classList.add('is-fullscreen');
+      fsBtn.title = 'Exit fullscreen';
+      if (icon) {
+        icon.setAttribute('data-lucide', 'minimize');
+        lucide.createIcons();
+      }
+    } else {
+      document.body.classList.remove('is-fullscreen');
+      fsBtn.title = 'Toggle fullscreen';
+      if (icon) {
+        icon.setAttribute('data-lucide', 'maximize');
+        lucide.createIcons();
+      }
+    }
+  });
+
   // Visibility toggle
   document.getElementById('visibilityToggle').addEventListener('click', () => {
     if (!currentNote) return;
