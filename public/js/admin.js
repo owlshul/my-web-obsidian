@@ -114,6 +114,14 @@ function applyTheme() {
     btn.innerHTML = `<i data-lucide="${isDark ? 'moon' : 'sun'}"></i>`;
     if (window.lucide) window.lucide.createIcons({ root: btn });
   }
+  updateKbdHint();
+}
+
+function updateKbdHint() {
+  const hint = document.getElementById('kbdHint');
+  if (!hint) return;
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  hint.innerHTML = `<kbd>${isMac ? '⌘' : 'Ctrl'}K</kbd>`;
 }
 
 // ─── Tree ────────────────────────────────────────────────────────────────────
@@ -1033,6 +1041,11 @@ function bindUI() {
   // Close ctx menu on escape
   document.addEventListener('keydown', e => {
     if (e.key === 'Escape') closeCtxMenu();
+    // Keyboard shortcut for search
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      document.getElementById('searchInput')?.focus();
+    }
   });
 
   // Warn on unload

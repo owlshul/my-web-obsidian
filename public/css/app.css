@@ -257,6 +257,7 @@
   flex-direction: column;
   overflow: hidden;
   background: var(--bg-primary);
+  min-width: 0;
 }
 
 /* ─── Topbar ──────────────────────────────────────────────────────────────── */
@@ -311,6 +312,7 @@
   flex: 1;
   display: flex;
   overflow: hidden;
+  min-width: 0;
 }
 
 /* ─── Content Pane ────────────────────────────────────────────────────────── */
@@ -321,6 +323,7 @@
   max-width: 780px;
   width: 100%;
   margin: 0 auto;
+  min-width: 0;
 }
 
 .content-pane.wide {
@@ -1041,10 +1044,22 @@ body.theme-dark .login-page {
 
   .content-pane {
     padding: 1.1rem 1rem;
+    min-width: 0;
   }
 
   .resizer {
     display: none;
+  }
+
+  /* Prevent horizontal overflow on mobile */
+  .content-wrapper {
+    overflow-x: hidden;
+  }
+
+  /* Ensure main area doesn't overflow */
+  #mainArea {
+    min-width: 0;
+    overflow: hidden;
   }
 
   .btn-icon {

@@ -209,7 +209,12 @@ async function loadTree() {
 // ─── Tree Rendering ───────────────────────────────────────────────────────────
 function renderTree(nodes, container = document.getElementById('fileTree')) {
   if (!nodes.length) {
-    container.innerHTML = '<div class="tree-empty"><div style="display:flex;justify-content:center;margin-bottom:.5rem;color:var(--text-faint)"><i data-lucide="leaf" style="width:32px;height:32px;"></i></div>No public notes yet</div>';
+    const searchQuery = document.getElementById('searchInput')?.value?.trim();
+    if (searchQuery) {
+      container.innerHTML = '<div class="tree-empty"><div style="display:flex;justify-content:center;margin-bottom:.5rem;color:var(--text-faint)"><i data-lucide="search-x" style="width:32px;height:32px;"></i></div>No notes matching "' + esc(searchQuery) + '"</div>';
+    } else {
+      container.innerHTML = '<div class="tree-empty"><div style="display:flex;justify-content:center;margin-bottom:.5rem;color:var(--text-faint)"><i data-lucide="leaf" style="width:32px;height:32px;"></i></div>No public notes yet</div>';
+    }
     if (window.lucide) window.lucide.createIcons();
     return;
   }

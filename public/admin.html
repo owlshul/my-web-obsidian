@@ -45,7 +45,8 @@
     <div class="sidebar-search">
       <div style="position:relative;display:flex;align-items:center;">
         <i data-lucide="search" style="position:absolute;left:8px;width:14px;height:14px;color:var(--text-faint);"></i>
-        <input type="search" id="searchInput" placeholder="Search notes…" autocomplete="off" style="padding-left:28px;width:100%;">
+        <input type="search" id="searchInput" placeholder="Search notes…" autocomplete="off" style="padding-left:28px;width:100%;padding-right:50px;">
+        <span class="kbd-hint" id="kbdHint"><kbd>⌘K</kbd></span>
       </div>
     </div>
 
@@ -90,13 +91,13 @@
         </div>
         <span class="save-status" id="saveStatus">All saved</span>
         <span class="word-count" id="wordCount"></span>
-        <button class="btn btn-primary" id="saveBtn">Save</button>
+        <button class="btn btn-primary" id="saveBtn" title="Save (⌘S / Ctrl+S)">Save</button>
         <button class="btn-icon topbar-toggle" id="rightSidebarToggle" title="Toggle outline"><i data-lucide="panel-right"></i></button>
       </div>
 
       <div class="editor-toolbar" id="editorToolbar">
-        <button class="toolbar-btn" data-action="bold"    title="Bold (Ctrl+B)"><i data-lucide="bold"></i></button>
-        <button class="toolbar-btn" data-action="italic"  title="Italic (Ctrl+I)"><i data-lucide="italic"></i></button>
+        <button class="toolbar-btn" data-action="bold"    title="Bold (⌘B / Ctrl+B)"><i data-lucide="bold"></i></button>
+        <button class="toolbar-btn" data-action="italic"  title="Italic (⌘I / Ctrl+I)"><i data-lucide="italic"></i></button>
         <button class="toolbar-btn" data-action="strike"  title="Strikethrough"><i data-lucide="strikethrough"></i></button>
         <div class="sep"></div>
         <button class="toolbar-btn" data-action="h1" title="Heading 1"><i data-lucide="heading-1"></i></button>
