@@ -933,7 +933,7 @@ function bindUI() {
     if (window.innerWidth <= 640) return; // Only on desktop
     
     // Left sidebar peek
-    if (e.clientX <= 20) {
+    if (e.clientX <= 50) {
       const sidebar = document.getElementById('sidebar');
       if (sidebar && sidebar.classList.contains('collapsed') && !sidebar.classList.contains('peeking')) {
         sidebar.classList.add('peeking');
@@ -941,7 +941,7 @@ function bindUI() {
     }
     
     // Right sidebar peek
-    if (window.innerWidth - e.clientX <= 20) {
+    if (window.innerWidth - e.clientX <= 50) {
       const outlinePane = document.getElementById('outlinePane');
       if (outlinePane && outlinePane.classList.contains('collapsed') && !outlinePane.classList.contains('hidden') && !outlinePane.classList.contains('peeking')) {
         outlinePane.classList.add('peeking');
