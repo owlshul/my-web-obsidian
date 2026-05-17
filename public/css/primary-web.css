@@ -123,9 +123,9 @@ body.theme-dark {
 :root {
   --sidebar-w:  260px;
   --topbar-h:   48px;
-  --radius-sm:  6px;
-  --radius-md:  12px;
-  --radius-lg:  16px;
+  --radius-sm:  8px;
+  --radius-md:  14px;
+  --radius-lg:  20px;
 
   /* Typography */
   --font-ui:      'Inter', system-ui, -apple-system, sans-serif;
@@ -151,6 +151,16 @@ body {
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
   transition: background .15s, color .15s;
+}
+
+:focus-visible {
+  outline: none;
+  box-shadow: 0 0 0 2px var(--bg-primary), 0 0 0 4px var(--accent);
+  border-radius: var(--radius-sm);
+}
+
+a:focus-visible {
+  border-radius: 2px;
 }
 
 ::-webkit-scrollbar { width: 5px; height: 5px; }
@@ -335,7 +345,7 @@ hr { border: none; border-top: 2px solid var(--border); margin: 1.5rem 0; }
 .btn-danger:hover { background: hsla(4, 72%, 55%, .08); }
 
 .btn-icon {
-  width: 26px; height: 26px;
+  width: 30px; height: 30px;
   padding: 0;
   display: flex; align-items: center; justify-content: center;
   border-radius: var(--radius-sm);
@@ -344,9 +354,10 @@ hr { border: none; border-top: 2px solid var(--border); margin: 1.5rem 0; }
   border: none;
   cursor: pointer;
   font-size: 0.9rem;
-  transition: background .12s, color .12s;
+  transition: background .12s, color .12s, transform .08s;
 }
 .btn-icon:hover { background: var(--bg-secondary); color: var(--text-normal); }
+.btn-icon:active { transform: scale(.92); }
 
 /* ─── Badges ──────────────────────────────────────────────────────────────── */
 .badge {

@@ -26,7 +26,7 @@
         <span id="siteTitle">Notes</span>
       </a>
       <div class="sidebar-actions">
-        <button class="btn-icon" id="toggleTheme" title="Toggle theme"><i data-lucide="sun"></i></button>
+        <button class="btn-icon theme-toggle" id="toggleTheme" title="Toggle theme"><i data-lucide="sun"></i></button>
       </div>
     </div>
 
@@ -61,9 +61,18 @@
         <a href="/">Home</a>
       </div>
       <div class="topbar-right">
-        <button class="btn btn-ghost" id="exportPdfBtn" style="font-size:.75rem; padding:.2rem .5rem; height: 26px; margin-right: 8px; display: none;" title="Export Note as clean PDF">
+        <button class="btn btn-ghost" id="exportPdfBtn" style="font-size:.75rem; padding:.2rem .5rem; height: 26px; display: none;" title="Export Note as clean PDF">
           <i data-lucide="file-down" style="width:14px;height:14px;"></i> PDF
         </button>
+        <div class="topbar-sep"></div>
+        <div class="font-size-controls">
+          <button class="font-size-btn" id="fontSizeDec" title="Decrease text size">A−</button>
+          <button class="font-size-btn reset" id="fontSizeReset" title="Reset text size">A</button>
+          <button class="font-size-btn" id="fontSizeInc" title="Increase text size">A+</button>
+        </div>
+        <div class="topbar-sep"></div>
+        <button class="btn-icon theme-toggle" id="toggleThemeTopbar" title="Toggle theme"><i data-lucide="sun"></i></button>
+        <div class="topbar-sep"></div>
         <button class="btn-icon topbar-toggle" id="rightSidebarToggle" title="Toggle outline"><i data-lucide="panel-right"></i></button>
       </div>
     </div>

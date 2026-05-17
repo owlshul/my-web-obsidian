@@ -306,8 +306,77 @@
   margin-left: auto;
   display: flex;
   align-items: center;
-  gap: .5rem;
+  gap: .4rem;
 }
+
+.topbar-sep {
+  width: 1px;
+  height: 18px;
+  background: var(--border);
+  flex-shrink: 0;
+}
+
+.font-size-controls {
+  display: flex;
+  align-items: center;
+  gap: 2px;
+}
+
+.font-size-btn {
+  width: 24px;
+  height: 24px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: var(--radius-sm);
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-weight: 600;
+  color: var(--text-muted);
+  transition: background .12s, color .12s;
+  font-size: .75rem;
+  line-height: 1;
+}
+
+.font-size-btn:hover {
+  background: var(--bg-secondary);
+  color: var(--text-normal);
+}
+
+.font-size-btn.reset {
+  font-size: .85rem;
+  font-weight: 700;
+}
+
+.font-size-btn svg {
+  width: 14px;
+  height: 14px;
+}
+
+.content-pane[data-font-size="small"] .note-body {
+  font-size: 0.9rem;
+  line-height: 1.6;
+}
+
+.content-pane[data-font-size="small"] .note-body h1 { font-size: 1.85rem; }
+.content-pane[data-font-size="small"] .note-body h2 { font-size: 1.45rem; }
+.content-pane[data-font-size="small"] .note-body h3 { font-size: 1.2rem; }
+
+.content-pane[data-font-size="medium"] .note-body {
+  font-size: 1rem;
+  line-height: 1.7;
+}
+
+.content-pane[data-font-size="large"] .note-body {
+  font-size: 1.15rem;
+  line-height: 1.8;
+}
+
+.content-pane[data-font-size="large"] .note-body h1 { font-size: 2.35rem; }
+.content-pane[data-font-size="large"] .note-body h2 { font-size: 1.85rem; }
+.content-pane[data-font-size="large"] .note-body h3 { font-size: 1.5rem; }
 
 /* ─── Content Wrapper ─────────────────────────────────────────────────────── */
 .content-wrapper {

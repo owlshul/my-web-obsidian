@@ -7,6 +7,7 @@ let tree = [];
 let currentPath = null;
 let searchTimeout = null;
 let isDark = localStorage.getItem('theme') === 'dark';
+let fontSize = localStorage.getItem('fontSize') || 'medium';
 
 // ─── Mobile Sidebar Auto-Close ───────────────────────────────────────────────
 function collapseSidebarsOnMobile() {
@@ -40,10 +41,12 @@ document.addEventListener('DOMContentLoaded', () => {
     }
   });
 
-  document.getElementById('toggleTheme').addEventListener('click', () => {
-    isDark = !isDark;
-    localStorage.setItem('theme', isDark ? 'dark' : 'light');
-    applyTheme();
+  document.querySelectorAll('.theme-toggle').forEach(btn => {
+    btn.addEventListener('click', () => {
+      isDark = !isDark;
+      localStorage.setItem('theme', isDark ? 'dark' : 'light');
+      applyTheme();
+    });
   });
 
   document.getElementById('sidebarToggle').addEventListener('click', () => {
@@ -64,6 +67,27 @@ document.addEventListener('DOMContentLoaded', () => {
 
   document.getElementById('backToTop')?.addEventListener('click', () => {
     document.getElementById('contentPane')?.scrollTo({ top: 0, behavior: 'smooth' });
+  });
+
+  // ─── Font Size ────────────────────────────────────────────────────────────
+  const sizes = ['small', 'medium', 'large'];
+  function applyFontSize(size) {
+    fontSize = size;
+    localStorage.setItem('fontSize', size);
+    document.getElementById('contentPane')?.setAttribute('data-font-size', size);
+  }
+  applyFontSize(fontSize);
+
+  document.getElementById('fontSizeDec')?.addEventListener('click', () => {
+    const idx = sizes.indexOf(fontSize);
+    if (idx > 0) applyFontSize(sizes[idx - 1]);
+  });
+  document.getElementById('fontSizeReset')?.addEventListener('click', () => {
+    applyFontSize('medium');
+  });
+  document.getElementById('fontSizeInc')?.addEventListener('click', () => {
+    const idx = sizes.indexOf(fontSize);
+    if (idx < sizes.length - 1) applyFontSize(sizes[idx + 1]);
   });
 
   initResizers();
@@ -151,11 +175,11 @@ document.addEventListener('DOMContentLoaded', () => {
 function applyTheme() {
   document.body.classList.toggle('theme-dark', isDark);
   document.body.classList.toggle('theme-light', !isDark);
-  const btn = document.getElementById('toggleTheme');
-  if (btn) {
-    btn.innerHTML = `<i data-lucide="${isDark ? 'sun' : 'moon'}"></i>`;
+  const icon = isDark ? 'sun' : 'moon';
+  document.querySelectorAll('.theme-toggle').forEach(btn => {
+    btn.innerHTML = `<i data-lucide="${icon}"></i>`;
     if (window.lucide) window.lucide.createIcons({ root: btn });
-  }
+  });
   const hint = document.getElementById('kbdHint');
   if (hint) {
     const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
