@@ -1,4 +1,4 @@
-const { Plugin, PluginSettingTab, Setting, Notice } = require('obsidian');
+const { Plugin, PluginSettingTab, Setting, Notice, requestUrl } = require('obsidian');
 
 const DEFAULT_SETTINGS = {
     serverUrl: 'https://padhlebhaii.vercel.app',
@@ -46,8 +46,10 @@ module.exports = class WebPublisher extends Plugin {
             const content = await this.app.vault.read(file);
             const serverUrl = this.settings.serverUrl.replace(/\/$/, ''); // Remove trailing slash if any
             
-            const res = await fetch(`${serverUrl}/api/sync`, {
+            const res = await requestUrl({
+                url: `${serverUrl}/api/sync`,
                 method: 'POST',
+                throw: false,
                 headers: {
                     'Content-Type': 'application/json',
                     'Authorization': `Bearer ${this.settings.apiKey}`
@@ -60,11 +62,10 @@ module.exports = class WebPublisher extends Plugin {
                 })
             });
 
-            if (res.ok) {
+            if (res.status === 200) {
                 new Notice('✅ Successfully published to web!');
             } else {
-                const err = await res.json();
-                new Notice(`❌ Failed: ${err.error || 'Unknown error'}`);
+                new Notice(`❌ Failed: ${res.json?.error || 'Unknown error'}`);
             }
         } catch (e) {
             new Notice(`❌ Error: ${e.message}`);

@@ -855,11 +855,15 @@ function confirmDelete(type, itemPath, name) {
 function bindUI() {
   // Sidebar toggle
   document.getElementById('sidebarToggle')?.addEventListener('click', () => {
-    document.getElementById('sidebar').classList.toggle('collapsed');
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('collapsed');
+    sidebar.classList.remove('peeking');
   });
 
   document.getElementById('rightSidebarToggle')?.addEventListener('click', () => {
-    document.getElementById('outlinePane').classList.toggle('collapsed');
+    const outlinePane = document.getElementById('outlinePane');
+    outlinePane.classList.toggle('collapsed');
+    outlinePane.classList.remove('peeking');
   });
 
   initResizers();
@@ -870,6 +874,41 @@ function bindUI() {
     if (window.innerWidth <= 640 && !e.target.closest('.topbar-toggle')) {
       document.getElementById('sidebar')?.classList.add('collapsed');
       document.getElementById('outlinePane')?.classList.add('collapsed');
+    }
+  });
+
+  // Desktop Hover-to-Open Sidebar Peek
+  document.addEventListener('mousemove', e => {
+    if (window.innerWidth <= 640) return; // Only on desktop
+    
+    // Left sidebar peek
+    if (e.clientX <= 20) {
+      const sidebar = document.getElementById('sidebar');
+      if (sidebar && sidebar.classList.contains('collapsed') && !sidebar.classList.contains('peeking')) {
+        sidebar.classList.add('peeking');
+      }
+    }
+    
+    // Right sidebar peek
+    if (window.innerWidth - e.clientX <= 20) {
+      const outlinePane = document.getElementById('outlinePane');
+      if (outlinePane && outlinePane.classList.contains('collapsed') && !outlinePane.classList.contains('hidden') && !outlinePane.classList.contains('peeking')) {
+        outlinePane.classList.add('peeking');
+      }
+    }
+  });
+
+  document.getElementById('sidebar')?.addEventListener('mouseleave', () => {
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar && sidebar.classList.contains('peeking')) {
+      sidebar.classList.remove('peeking');
+    }
+  });
+
+  document.getElementById('outlinePane')?.addEventListener('mouseleave', () => {
+    const outlinePane = document.getElementById('outlinePane');
+    if (outlinePane && outlinePane.classList.contains('peeking')) {
+      outlinePane.classList.remove('peeking');
     }
   });
 
