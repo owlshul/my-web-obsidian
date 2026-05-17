@@ -201,6 +201,49 @@ app.get('/api/note/*', async (req, res) => {
   }
 });
 
+// ─── Obsidian Plugin Sync ─────────────────────────────────────────────────────
+app.post('/api/sync', async (req, res) => {
+  try {
+    const authHeader = req.headers.authorization;
+    const expectedKey = process.env.API_KEY;
+    
+    if (!expectedKey) {
+      return res.status(500).json({ error: 'Server API_KEY not configured' });
+    }
+    
+    if (!authHeader || authHeader !== `Bearer ${expectedKey}`) {
+      return res.status(401).json({ error: 'Unauthorized: Invalid API Key' });
+    }
+
+    const { path: notePath, title, content = '', visibility = 'public' } = req.body;
+    if (!notePath) return res.status(400).json({ error: 'Path is required' });
+
+    const np = notePath.endsWith('.md') ? notePath : `${notePath}.md`;
+    
+    // Upsert (Create or Update)
+    const existing = await Note.findOne({ path: np });
+    if (existing) {
+      existing.content = content;
+      if (title) existing.title = title;
+      existing.updated = new Date();
+      await existing.save();
+    } else {
+      await Note.create({
+        path: np,
+        content,
+        title: title || np.replace('.md', '').split('/').pop(),
+        visibility
+      });
+    }
+    
+    res.json({ success: true, path: np });
+  } catch (err) {
+    console.error('Plugin sync error:', err);
+    res.status(500).json({ error: 'Internal server error during sync' });
+  }
+});
+
+
 app.post('/api/note', requireAdmin, async (req, res) => {
   try {
     let { path: notePath, title, content = '', visibility = 'private' } = req.body;
