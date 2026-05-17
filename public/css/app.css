@@ -991,7 +991,8 @@ body.theme-dark .note-body h6 {
   #exportPdfBtn,
   #previewToggleBtn,
   #saveBtn,
-  .save-status {
+  .save-status,
+  .topbar {
     display: none !important;
   }
   

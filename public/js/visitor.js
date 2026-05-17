@@ -42,6 +42,10 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('outlinePane').classList.toggle('collapsed');
   });
 
+  document.getElementById('exportPdfBtn')?.addEventListener('click', () => {
+    window.print();
+  });
+
   initResizers();
 
   // Mobile sidebar dismissal
@@ -217,6 +221,9 @@ async function openNote(notePath) {
 
     updateOutline(body);
 
+    const pdfBtn = document.getElementById('exportPdfBtn');
+    if (pdfBtn) pdfBtn.style.display = 'inline-flex';
+
     // Update page title
     document.title = `${note.title || note.name} — My Notes`;
 
@@ -233,6 +240,10 @@ async function openNote(notePath) {
 function showWelcome() {
   currentPath = null;
   document.title = 'My Notes';
+  
+  const pdfBtn = document.getElementById('exportPdfBtn');
+  if (pdfBtn) pdfBtn.style.display = 'none';
+
   document.getElementById('breadcrumb').innerHTML = `<a href="/">Home</a>`;
   document.getElementById('contentPane').innerHTML = `
     <div class="welcome fade-in">
