@@ -374,6 +374,7 @@ async function openNote(notePath) {
     pane.appendChild(body);
     wrapCodeBlocks(body);
     updateOutline(body);
+    initHeadingFlowcharts(body);
     resetReadingProgress();
     collapseSidebarsOnMobile();
     if (pdfBtn) pdfBtn.style.display = 'inline-flex';
@@ -616,5 +617,252 @@ function initResizers() {
     document.body.style.cursor = '';
     leftResizer?.classList.remove('dragging');
     rightResizer?.classList.remove('dragging');
+  });
+}
+
+// ─── Heading Outline Flowcharts ────────────────────────────────────────────────
+function initHeadingFlowcharts(container) {
+  const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
+  
+  headings.forEach((h, index) => {
+    h.setAttribute('data-heading-index', index);
+    if (!h.id) {
+      h.id = 'heading-ref-' + index;
+    }
+    
+    // Check if there are actual sub-headings under this heading
+    const clickedLevel = parseInt(h.tagName.substring(1));
+    let current = h.nextElementSibling;
+    let hasSubHeadings = false;
+    while (current) {
+      if (current.tagName.match(/^H[1-6]$/)) {
+        const level = parseInt(current.tagName.substring(1));
+        if (level <= clickedLevel) break; // sibling or parent heading
+        hasSubHeadings = true;
+        break;
+      }
+      current = current.nextElementSibling;
+    }
+    
+    if (!hasSubHeadings) return;
+    
+    // Create button
+    const btn = document.createElement('button');
+    btn.className = 'heading-flowchart-btn';
+    btn.title = 'View visual outline flowchart';
+    btn.innerHTML = `<i data-lucide="network"></i>`;
+    h.appendChild(btn);
+    
+    if (window.lucide) {
+      window.lucide.createIcons({ root: btn });
+    }
+    
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleFlowchart(h, container);
+    });
+  });
+}
+
+function toggleFlowchart(clickedHeading, container) {
+  const nextEl = clickedHeading.nextElementSibling;
+  if (nextEl && nextEl.classList.contains('flowchart-space')) {
+    // Transition close
+    nextEl.style.maxHeight = nextEl.scrollHeight + 'px';
+    nextEl.getBoundingClientRect();
+    nextEl.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+    nextEl.style.opacity = '0';
+    nextEl.style.transform = 'translateY(-10px)';
+    nextEl.style.maxHeight = '0';
+    nextEl.style.paddingTop = '0';
+    nextEl.style.paddingBottom = '0';
+    nextEl.style.marginTop = '0';
+    nextEl.style.marginBottom = '0';
+    nextEl.style.borderWidth = '0';
+    setTimeout(() => {
+      nextEl.remove();
+    }, 300);
+    return;
+  }
+  
+  // Close any other open flowchart spaces in this note
+  container.querySelectorAll('.flowchart-space').forEach(space => {
+    space.remove();
+  });
+  
+  const treeData = buildHeadingTree(clickedHeading);
+  if (!treeData) return;
+  
+  const space = document.createElement('div');
+  space.className = 'flowchart-space';
+  
+  const header = document.createElement('div');
+  header.className = 'flowchart-header';
+  header.innerHTML = `
+    <span class="flowchart-title">Visual Map</span>
+    <button class="flowchart-close-btn" title="Close map">&times;</button>
+  `;
+  
+  const body = document.createElement('div');
+  body.className = 'flowchart-body';
+  
+  const treeContainer = document.createElement('div');
+  treeContainer.className = 'flowchart-tree';
+  
+  const treeList = document.createElement('ul');
+  treeList.innerHTML = renderTreeNodeHTML(treeData);
+  treeContainer.appendChild(treeList);
+  body.appendChild(treeContainer);
+  
+  space.appendChild(header);
+  space.appendChild(body);
+  
+  clickedHeading.insertAdjacentElement('afterend', space);
+  
+  initDragToScroll(body);
+  
+  header.querySelector('.flowchart-close-btn').addEventListener('click', () => {
+    toggleFlowchart(clickedHeading, container);
+  });
+  
+  body.querySelectorAll('.flowchart-node').forEach(nodeEl => {
+    nodeEl.addEventListener('click', (e) => {
+      const idx = nodeEl.getAttribute('data-heading-index');
+      const targetHeading = container.querySelector(`[data-heading-index="${idx}"]`);
+      if (targetHeading) {
+        nodeEl.style.transform = 'scale(0.95)';
+        setTimeout(() => nodeEl.style.transform = '', 150);
+        
+        const yOffset = -80; // height of topbar + padding
+        const y = targetHeading.getBoundingClientRect().top + window.pageYOffset + yOffset;
+        document.getElementById('contentPane')?.scrollTo({ top: y, behavior: 'smooth' });
+        
+        targetHeading.style.transition = 'text-shadow 0.3s ease, color 0.3s ease';
+        targetHeading.style.textShadow = '0 0 12px var(--accent)';
+        targetHeading.style.color = 'var(--accent)';
+        setTimeout(() => {
+          targetHeading.style.textShadow = '';
+          targetHeading.style.color = '';
+        }, 1500);
+      }
+    });
+  });
+}
+
+function buildHeadingTree(clickedHeading) {
+  const clickedLevel = parseInt(clickedHeading.tagName.substring(1));
+  const clickedIdx = clickedHeading.getAttribute('data-heading-index');
+  const subHeadings = [];
+  
+  let current = clickedHeading.nextElementSibling;
+  while (current) {
+    if (current.tagName.match(/^H[1-6]$/)) {
+      const level = parseInt(current.tagName.substring(1));
+      if (level <= clickedLevel) break; // sibling or parent heading
+      subHeadings.push(current);
+    }
+    current = current.nextElementSibling;
+  }
+  
+  if (subHeadings.length === 0) return null;
+  
+  // Get parent text node only
+  let parentText = "";
+  for (const child of clickedHeading.childNodes) {
+    if (child.nodeType === Node.TEXT_NODE) {
+      parentText += child.textContent;
+    } else if (child.nodeType === Node.ELEMENT_NODE && !child.classList.contains('heading-flowchart-btn')) {
+      parentText += child.textContent;
+    }
+  }
+  parentText = parentText.trim();
+  
+  const root = {
+    name: parentText,
+    index: clickedIdx,
+    level: clickedLevel,
+    children: []
+  };
+  
+  const stack = [root];
+  
+  for (const h of subHeadings) {
+    const level = parseInt(h.tagName.substring(1));
+    const idx = h.getAttribute('data-heading-index');
+    
+    let headingText = "";
+    for (const child of h.childNodes) {
+      if (child.nodeType === Node.TEXT_NODE) {
+        headingText += child.textContent;
+      } else if (child.nodeType === Node.ELEMENT_NODE && !child.classList.contains('heading-flowchart-btn')) {
+        headingText += child.textContent;
+      }
+    }
+    headingText = headingText.trim();
+    
+    const node = {
+      name: headingText,
+      index: idx,
+      level: level,
+      children: []
+    };
+    
+    while (stack.length > 0 && stack[stack.length - 1].level >= level) {
+      stack.pop();
+    }
+    
+    if (stack.length > 0) {
+      stack[stack.length - 1].children.push(node);
+    }
+    stack.push(node);
+  }
+  
+  return root;
+}
+
+function renderTreeNodeHTML(node, isRoot = true) {
+  let html = `<li>`;
+  const nodeClass = isRoot ? 'flowchart-node parent-node' : 'flowchart-node';
+  html += `<div class="${nodeClass}" data-heading-index="${node.index}" title="${escHtml(node.name)}">${escHtml(node.name)}</div>`;
+  
+  if (node.children && node.children.length > 0) {
+    html += `<ul>`;
+    for (const child of node.children) {
+      html += renderTreeNodeHTML(child, false);
+    }
+    html += `</ul>`;
+  }
+  html += `</li>`;
+  return html;
+}
+
+function initDragToScroll(el) {
+  let isDown = false;
+  let startX;
+  let scrollLeft;
+  
+  el.addEventListener('mousedown', (e) => {
+    isDown = true;
+    el.classList.add('grabbing');
+    startX = e.pageX - el.offsetLeft;
+    scrollLeft = el.scrollLeft;
+  });
+  
+  el.addEventListener('mouseleave', () => {
+    isDown = false;
+    el.classList.remove('grabbing');
+  });
+  
+  el.addEventListener('mouseup', () => {
+    isDown = false;
+    el.classList.remove('grabbing');
+  });
+  
+  el.addEventListener('mousemove', (e) => {
+    if (!isDown) return;
+    e.preventDefault();
+    const x = e.pageX - el.offsetLeft;
+    const walk = (x - startX) * 1.5;
+    el.scrollLeft = scrollLeft - walk;
   });
 }

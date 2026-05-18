@@ -1505,3 +1505,270 @@ body.is-fullscreen .content-pane {
   background: transparent !important;
   transform: scale(0.9) !important; /* Subtle tactile scale, but absolutely NO highlights or boxes! */
 }
+
+/* ─── Heading Flowchart Visualizations ───────────────────────────────────── */
+.note-body h1, .note-body h2, .note-body h3, .note-body h4, .note-body h5, .note-body h6 {
+  position: relative;
+  display: flex;
+  align-items: center;
+  gap: 0.5rem;
+}
+
+.heading-flowchart-btn {
+  opacity: 0;
+  background: transparent !important;
+  border: none !important;
+  padding: 0 !important;
+  cursor: pointer;
+  color: var(--text-muted) !important;
+  transition: opacity 0.2s ease, color 0.15s ease, transform 0.1s ease !important;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+}
+
+/* Fades in beautifully when hovering the heading */
+.note-body h1:hover .heading-flowchart-btn,
+.note-body h2:hover .heading-flowchart-btn,
+.note-body h3:hover .heading-flowchart-btn,
+.note-body h4:hover .heading-flowchart-btn,
+.note-body h5:hover .heading-flowchart-btn,
+.note-body h6:hover .heading-flowchart-btn {
+  opacity: 1;
+}
+
+/* Soft display on mobile touchscreens where hover doesn't exist */
+@media (max-width: 768px) {
+  .heading-flowchart-btn {
+    opacity: 0.5;
+  }
+}
+
+.heading-flowchart-btn:hover {
+  color: var(--accent) !important;
+  transform: scale(1.15) !important;
+}
+
+.heading-flowchart-btn svg {
+  width: 16px;
+  height: 16px;
+  pointer-events: none;
+}
+
+/* Flowchart Space Card Container */
+.flowchart-space {
+  background: var(--glass-bg) !important;
+  border: 1px solid var(--glass-border) !important;
+  border-radius: var(--radius-md) !important;
+  padding: 1.5rem !important;
+  margin: 1.5rem 0 !important;
+  box-shadow: var(--shadow-sm) !important;
+  backdrop-filter: blur(8px);
+  -webkit-backdrop-filter: blur(8px);
+  display: flex;
+  flex-direction: column;
+  gap: 1rem;
+  animation: slideDownFade 0.3s cubic-bezier(0.4, 0, 0.2, 1);
+  overflow: hidden;
+}
+
+@keyframes slideDownFade {
+  from {
+    opacity: 0;
+    transform: translateY(-10px);
+  }
+  to {
+    opacity: 1;
+    transform: translateY(0);
+  }
+}
+
+.flowchart-header {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  border-bottom: 1px solid var(--glass-border);
+  padding-bottom: 0.5rem;
+}
+
+.flowchart-title {
+  font-family: var(--font-ui);
+  font-size: 0.75rem;
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: 0.05em;
+  color: var(--accent);
+}
+
+.flowchart-close-btn {
+  background: transparent !important;
+  border: none !important;
+  color: var(--text-muted) !important;
+  font-size: 1.25rem !important;
+  cursor: pointer;
+  line-height: 1 !important;
+  padding: 0 !important;
+  width: 24px !important;
+  height: 24px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  transition: color 0.15s ease !important;
+}
+
+.flowchart-close-btn:hover {
+  color: var(--primary-red) !important;
+}
+
+.flowchart-body {
+  overflow-x: auto;
+  -webkit-overflow-scrolling: touch;
+  padding: 1rem 0;
+  cursor: grab;
+  width: 100%;
+}
+
+.flowchart-body.grabbing {
+  cursor: grabbing;
+}
+
+/* ─── CSS Tree Flowchart Structure ─── */
+.flowchart-tree {
+  display: inline-block;
+  min-width: 100%;
+  text-align: center;
+}
+
+.flowchart-tree ul {
+  padding-top: 20px;
+  position: relative;
+  transition: all 0.3s;
+  display: flex;
+  justify-content: center;
+  padding-left: 0;
+  margin: 0;
+}
+
+.flowchart-tree li {
+  list-style-type: none;
+  position: relative;
+  padding: 20px 6px 0 6px;
+  transition: all 0.3s;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+}
+
+/* Drawing organizational chart lines */
+.flowchart-tree li::before, 
+.flowchart-tree li::after {
+  content: '';
+  position: absolute;
+  top: 0;
+  right: 50%;
+  border-top: 1.5px solid var(--glass-border);
+  width: 50%;
+  height: 20px;
+}
+
+.flowchart-tree li::after {
+  right: auto;
+  left: 50%;
+  border-left: 1.5px solid var(--glass-border);
+}
+
+.flowchart-tree li:only-child::after, 
+.flowchart-tree li:only-child::before {
+  display: none;
+}
+
+.flowchart-tree li:only-child {
+  padding-top: 0;
+}
+
+.flowchart-tree li:first-child::before, 
+.flowchart-tree li:last-child::after {
+  border: 0 none;
+}
+
+.flowchart-tree li:last-child::before {
+  border-right: 1.5px solid var(--glass-border);
+  border-radius: 0 6px 0 0;
+}
+
+.flowchart-tree li:first-child::after {
+  border-radius: 6px 0 0 0;
+}
+
+.flowchart-tree ul ul::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  left: 50%;
+  border-left: 1.5px solid var(--glass-border);
+  width: 0;
+  height: 20px;
+  transform: translateX(-50%);
+}
+
+/* Tree Nodes */
+.flowchart-node {
+  border: 1px solid var(--glass-border) !important;
+  padding: 0.5rem 0.85rem !important;
+  text-decoration: none !important;
+  color: var(--text-normal) !important;
+  font-family: var(--font-ui) !important;
+  font-size: 0.72rem !important;
+  font-weight: 500 !important;
+  border-radius: var(--radius-sm) !important;
+  display: inline-block !important;
+  background: var(--bg-secondary) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  position: relative !important;
+  z-index: 2 !important;
+  white-space: nowrap !important;
+  max-width: 150px !important;
+  overflow: hidden !important;
+  text-overflow: ellipsis !important;
+  box-shadow: var(--shadow-sm) !important;
+  cursor: pointer !important;
+  user-select: none !important;
+}
+
+.flowchart-node:hover {
+  background: var(--accent) !important;
+  color: hsl(31, 45%, 12%) !important;
+  border-color: var(--accent) !important;
+  transform: translateY(-2px) scale(1.05) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
+}
+
+/* Highlight Parent/Root Node */
+.flowchart-node.parent-node {
+  border-color: var(--accent) !important;
+  color: var(--accent) !important;
+  font-weight: 600 !important;
+  background: var(--bg-tertiary) !important;
+}
+
+.flowchart-node.parent-node:hover {
+  background: var(--accent) !important;
+  color: hsl(31, 45%, 12%) !important;
+}
+
+/* Custom Scrollbar for the Draggable Body */
+.flowchart-body::-webkit-scrollbar {
+  height: 4px;
+}
+.flowchart-body::-webkit-scrollbar-track {
+  background: transparent;
+}
+.flowchart-body::-webkit-scrollbar-thumb {
+  background: var(--glass-border);
+  border-radius: 4px;
+}
+.flowchart-body::-webkit-scrollbar-thumb:hover {
+  background: var(--text-muted);
+}
