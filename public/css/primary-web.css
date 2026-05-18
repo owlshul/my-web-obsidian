@@ -142,7 +142,11 @@ body.theme-dark {
 /* ─── Reset ──────────────────────────────────────────────────────────────── */
 *, *::before, *::after { box-sizing: border-box; margin: 0; padding: 0; }
 
-html { font-size: 16px; }
+html {
+  font-size: 16px;
+  width: 100vw;
+  overflow-x: hidden;
+}
 
 body {
   font-family: var(--font-ui);
@@ -151,6 +155,9 @@ body {
   line-height: 1.65;
   -webkit-font-smoothing: antialiased;
   transition: background .15s, color .15s;
+  width: 100vw;
+  overflow-x: hidden;
+  position: relative;
 }
 
 :focus-visible {
