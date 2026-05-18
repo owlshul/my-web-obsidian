@@ -363,7 +363,7 @@ async function openNote(notePath) {
     const updated = note.updated ? new Date(note.updated).toLocaleDateString('en-US', { year: 'numeric', month: 'long', day: 'numeric' }) : '';
     const wordCount = note.content ? note.content.split(/\s+/).filter(w => w.length > 0).length : 0;
     const readingTime = Math.max(1, Math.ceil(wordCount / 200));
-    header.innerHTML = `<div class="note-title-display">${esc(note.title || note.name)}</div><div class="note-meta">${updated ? `<span class="note-meta-item"><i data-lucide="calendar" style="width:13px;height:13px;"></i><span>Updated ${updated}</span></span>` : ''}<span class="note-meta-item"><i data-lucide="clock" style="width:13px;height:13px;"></i><span>${readingTime} min read</span></span></div>`;
+    header.innerHTML = `<div class="note-title-display">${esc(note.title || note.name)} <button class="title-flowchart-btn" title="View visual map of the entire note"><i data-lucide="network"></i></button></div><div class="note-meta">${updated ? `<span class="note-meta-item"><i data-lucide="calendar" style="width:13px;height:13px;"></i><span>Updated ${updated}</span></span>` : ''}<span class="note-meta-item"><i data-lucide="clock" style="width:13px;height:13px;"></i><span>${readingTime} min read</span></span></div>`;
     const divider = document.createElement('hr');
     divider.className = 'note-divider';
     const body = document.createElement('div');
@@ -622,6 +622,7 @@ function initResizers() {
 
 // ─── Heading Outline Flowcharts ────────────────────────────────────────────────
 function initHeadingFlowcharts(container) {
+  // 1. Bind Heading Flowchart Buttons
   const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
   
   headings.forEach((h, index) => {
@@ -662,6 +663,16 @@ function initHeadingFlowcharts(container) {
       toggleFlowchart(h, container);
     });
   });
+
+  // 2. Bind Note Title Flowchart Button
+  const pane = container.closest('#contentPane');
+  const titleBtn = pane?.querySelector('.title-flowchart-btn');
+  if (titleBtn) {
+    titleBtn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      toggleRootFlowchart(pane, container);
+    });
+  }
 }
 
 function toggleFlowchart(clickedHeading, container) {
@@ -720,6 +731,7 @@ function toggleFlowchart(clickedHeading, container) {
   clickedHeading.insertAdjacentElement('afterend', space);
   
   initDragToScroll(body);
+  initTreeNodeCollapsing(body);
   
   header.querySelector('.flowchart-close-btn').addEventListener('click', () => {
     toggleFlowchart(clickedHeading, container);
@@ -828,18 +840,33 @@ function buildHeadingTree(clickedHeading) {
   return root;
 }
 
-function renderTreeNodeHTML(node, isRoot = true) {
-  let html = `<li>`;
-  const nodeClass = isRoot ? 'flowchart-node parent-node' : 'flowchart-node';
-  html += `<div class="${nodeClass}" data-heading-index="${node.index}" title="${escHtml(node.name)}">${escHtml(node.name)}</div>`;
+function renderTreeNodeHTML(node, depth = 0) {
+  const hasChildren = node.children && node.children.length > 0;
+  const isCollapsedByDefault = depth >= 2; // Collapse grandchildren and deeper by default
   
-  if (node.children && node.children.length > 0) {
-    html += `<ul>`;
+  let html = `<li class="${hasChildren && isCollapsedByDefault ? 'children-collapsed' : ''}">`;
+  
+  const nodeClass = depth === 0 ? 'flowchart-node parent-node' : 'flowchart-node';
+  
+  html += `
+    <div class="flowchart-node-wrapper">
+      <div class="${nodeClass}" data-heading-index="${node.index}" title="${escHtml(node.name)}">${escHtml(node.name)}</div>
+      ${hasChildren ? `
+        <button class="node-toggle-btn" title="Toggle branches">
+          <i data-lucide="${isCollapsedByDefault ? 'plus' : 'minus'}"></i>
+        </button>
+      ` : ''}
+    </div>
+  `;
+  
+  if (hasChildren) {
+    html += `<ul class="${isCollapsedByDefault ? 'collapsed' : ''}">`;
     for (const child of node.children) {
-      html += renderTreeNodeHTML(child, false);
+      html += renderTreeNodeHTML(child, depth + 1);
     }
     html += `</ul>`;
   }
+  
   html += `</li>`;
   return html;
 }
@@ -872,5 +899,188 @@ function initDragToScroll(el) {
     const x = e.pageX - el.offsetLeft;
     const walk = (x - startX) * 1.5;
     el.scrollLeft = scrollLeft - walk;
+  });
+}
+
+function toggleRootFlowchart(pane, container) {
+  const divider = pane.querySelector('.note-divider');
+  if (!divider) return;
+  
+  const nextEl = divider.nextElementSibling;
+  if (nextEl && nextEl.classList.contains('flowchart-space') && nextEl.classList.contains('root-flowchart')) {
+    // Transition close
+    nextEl.style.maxHeight = nextEl.scrollHeight + 'px';
+    nextEl.getBoundingClientRect();
+    nextEl.style.transition = 'all 0.3s cubic-bezier(0.4, 0, 0.2, 1)';
+    nextEl.style.opacity = '0';
+    nextEl.style.transform = 'translateY(-10px)';
+    nextEl.style.maxHeight = '0';
+    nextEl.style.paddingTop = '0';
+    nextEl.style.paddingBottom = '0';
+    nextEl.style.marginTop = '0';
+    nextEl.style.marginBottom = '0';
+    nextEl.style.borderWidth = '0';
+    setTimeout(() => {
+      nextEl.remove();
+    }, 300);
+    return;
+  }
+  
+  // Close any other open flowchart spaces
+  pane.querySelectorAll('.flowchart-space').forEach(space => {
+    space.remove();
+  });
+  
+  // Get title text
+  const titleTextEl = pane.querySelector('.note-title-display');
+  let titleText = "";
+  if (titleTextEl) {
+    for (const child of titleTextEl.childNodes) {
+      if (child.nodeType === Node.TEXT_NODE) {
+        titleText += child.textContent;
+      } else if (child.nodeType === Node.ELEMENT_NODE && !child.classList.contains('title-flowchart-btn')) {
+        titleText += child.textContent;
+      }
+    }
+  }
+  titleText = titleText.trim() || "Note";
+  
+  const treeData = buildFullNoteTree(container, titleText);
+  if (!treeData) return;
+  
+  const space = document.createElement('div');
+  space.className = 'flowchart-space root-flowchart';
+  
+  const header = document.createElement('div');
+  header.className = 'flowchart-header';
+  header.innerHTML = `
+    <span class="flowchart-title">Visual Map: Entire Note</span>
+    <button class="flowchart-close-btn" title="Close map">&times;</button>
+  `;
+  
+  const body = document.createElement('div');
+  body.className = 'flowchart-body';
+  
+  const treeContainer = document.createElement('div');
+  treeContainer.className = 'flowchart-tree';
+  
+  const treeList = document.createElement('ul');
+  treeList.innerHTML = renderTreeNodeHTML(treeData);
+  treeContainer.appendChild(treeList);
+  body.appendChild(treeContainer);
+  
+  space.appendChild(header);
+  space.appendChild(body);
+  
+  divider.insertAdjacentElement('afterend', space);
+  
+  initDragToScroll(body);
+  initTreeNodeCollapsing(body);
+  
+  header.querySelector('.flowchart-close-btn').addEventListener('click', () => {
+    toggleRootFlowchart(pane, container);
+  });
+  
+  // Node click redirection
+  body.querySelectorAll('.flowchart-node').forEach(nodeEl => {
+    nodeEl.addEventListener('click', (e) => {
+      const idx = nodeEl.getAttribute('data-heading-index');
+      if (idx === "-1") return; // clicked root note title node
+      
+      const targetHeading = container.querySelector(`[data-heading-index="${idx}"]`);
+      if (targetHeading) {
+        nodeEl.style.transform = 'scale(0.95)';
+        setTimeout(() => nodeEl.style.transform = '', 150);
+        
+        const paneScroll = document.getElementById('contentPane');
+        if (paneScroll) {
+          const paneRect = paneScroll.getBoundingClientRect();
+          const targetRect = targetHeading.getBoundingClientRect();
+          const relativeTop = targetRect.top - paneRect.top + paneScroll.scrollTop;
+          const yOffset = -20;
+          paneScroll.scrollTo({
+            top: relativeTop + yOffset,
+            behavior: 'smooth'
+          });
+        }
+        
+        targetHeading.style.transition = 'text-shadow 0.3s ease, color 0.3s ease';
+        targetHeading.style.textShadow = '0 0 12px var(--accent)';
+        targetHeading.style.color = 'var(--accent)';
+        setTimeout(() => {
+          targetHeading.style.textShadow = '';
+          targetHeading.style.color = '';
+        }, 1500);
+      }
+    });
+  });
+}
+
+function buildFullNoteTree(container, noteTitleText) {
+  const headings = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
+  if (headings.length === 0) return null;
+  
+  const root = {
+    name: noteTitleText,
+    index: -1,
+    level: 0,
+    children: []
+  };
+  
+  const stack = [root];
+  
+  headings.forEach((h, index) => {
+    const level = parseInt(h.tagName.substring(1));
+    const idx = index;
+    
+    let headingText = "";
+    for (const child of h.childNodes) {
+      if (child.nodeType === Node.TEXT_NODE) {
+        headingText += child.textContent;
+      } else if (child.nodeType === Node.ELEMENT_NODE && !child.classList.contains('heading-flowchart-btn')) {
+        headingText += child.textContent;
+      }
+    }
+    headingText = headingText.trim();
+    
+    const node = {
+      name: headingText,
+      index: idx,
+      level: level,
+      children: []
+    };
+    
+    while (stack.length > 1 && stack[stack.length - 1].level >= level) {
+      stack.pop();
+    }
+    
+    stack[stack.length - 1].children.push(node);
+    stack.push(node);
+  });
+  
+  return root;
+}
+
+function initTreeNodeCollapsing(flowchartBody) {
+  flowchartBody.querySelectorAll('.node-toggle-btn').forEach(btn => {
+    btn.addEventListener('click', (e) => {
+      e.stopPropagation();
+      const li = btn.closest('li');
+      const childUl = li.querySelector(':scope > ul');
+      
+      if (childUl) {
+        const isCollapsed = childUl.classList.toggle('collapsed');
+        li.classList.toggle('children-collapsed', isCollapsed);
+        
+        // Toggle plus/minus icon
+        const icon = btn.querySelector('i');
+        if (icon) {
+          icon.setAttribute('data-lucide', isCollapsed ? 'plus' : 'minus');
+          if (window.lucide) {
+            window.lucide.createIcons({ root: btn });
+          }
+        }
+      }
+    });
   });
 }
