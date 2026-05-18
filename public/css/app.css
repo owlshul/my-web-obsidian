@@ -1438,4 +1438,63 @@ body.is-fullscreen .content-pane {
     top: var(--topbar-h) !important;
     height: calc(100vh - var(--topbar-h)) !important;
   }
+  
+  /* Declutter topbar on mobile to prevent squishiness */
+  #exportPdfBtn,
+  .font-size-controls,
+  .topbar-sep {
+    display: none !important;
+  }
+}
+
+/* ─── Floating Outline Toggle Button ────────────────────────────────────────── */
+.floating-outline-toggle {
+  position: fixed;
+  bottom: calc(2rem + 50px);
+  right: 2rem;
+  width: 42px;
+  height: 42px;
+  border-radius: 50%;
+  background: var(--glass-bg);
+  backdrop-filter: blur(12px);
+  -webkit-backdrop-filter: blur(12px);
+  border: 1px solid var(--glass-border);
+  color: var(--text-normal);
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  cursor: pointer;
+  z-index: 999;
+  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
+  transition: opacity 0.25s ease, transform 0.25s ease, background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
+  opacity: 0;
+  pointer-events: none;
+  transform: translateY(10px);
+}
+
+.floating-outline-toggle.visible {
+  opacity: 1;
+  transform: translateY(0);
+  pointer-events: auto;
+}
+
+.floating-outline-toggle:hover {
+  background: var(--accent);
+  color: hsl(31, 45%, 12%) !important;
+  box-shadow: var(--shadow-md);
+  transform: scale(1.08);
+}
+
+.floating-outline-toggle svg {
+  width: 20px;
+  height: 20px;
+}
+
+@media (max-width: 640px) {
+  .floating-outline-toggle {
+    bottom: calc(1rem + 50px);
+    right: 1rem;
+    width: 44px;
+    height: 44px;
+  }
 }

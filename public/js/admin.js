@@ -1088,6 +1088,8 @@ function bindUI() {
   window.addEventListener('beforeunload', e => {
     if (isDirty) { e.preventDefault(); e.returnValue = ''; }
   });
+
+  initFloatingOutline();
 }
 
 // ─── Search filter ────────────────────────────────────────────────────────────
@@ -1194,7 +1196,7 @@ function initEditor() {
     }
   });
   
-  document.querySelectorAll('.toolbar-btn').forEach(btn => {
+    document.querySelectorAll('.toolbar-btn').forEach(btn => {
     btn.addEventListener('click', () => {
       const action = btn.dataset.action;
       if (action) {
@@ -1202,4 +1204,60 @@ function initEditor() {
       }
     });
   });
+}
+
+// ─── Floating Outline Toggle Setup ──────────────────────────────────────────
+function initFloatingOutline() {
+  const outlinePane = document.getElementById('outlinePane');
+  if (!outlinePane) return;
+
+  // Create floating button dynamically
+  const floatBtn = document.createElement('button');
+  floatBtn.id = 'floatingOutlineToggle';
+  floatBtn.className = 'floating-outline-toggle';
+  floatBtn.title = 'Toggle outline';
+  floatBtn.innerHTML = `<i data-lucide="list"></i>`;
+  document.body.appendChild(floatBtn);
+
+  // Initialize icon
+  if (window.lucide) {
+    window.lucide.createIcons({
+      node: floatBtn
+    });
+  }
+
+  // Handle click
+  floatBtn.addEventListener('click', (e) => {
+    e.stopPropagation();
+    outlinePane.classList.toggle('collapsed');
+    outlinePane.classList.remove('peeking');
+    updateFloatingOutlineVisibility();
+  });
+
+  // Observe class mutations on outlinePane (handles hidden, collapsed, and peeking changes instantly!)
+  const observer = new MutationObserver(() => {
+    updateFloatingOutlineVisibility();
+  });
+  observer.observe(outlinePane, { attributes: true, attributeFilter: ['class'] });
+
+  // Initial check
+  updateFloatingOutlineVisibility();
+}
+
+function updateFloatingOutlineVisibility() {
+  const outlinePane = document.getElementById('outlinePane');
+  const floatBtn = document.getElementById('floatingOutlineToggle');
+  if (!outlinePane || !floatBtn) return;
+
+  // Show floating button ONLY if:
+  // 1. Outline is active (does not have 'hidden' class)
+  // 2. Outline is collapsed
+  const isOutlineActive = !outlinePane.classList.contains('hidden');
+  const isOutlineCollapsed = outlinePane.classList.contains('collapsed');
+
+  if (isOutlineActive && isOutlineCollapsed) {
+    floatBtn.classList.add('visible');
+  } else {
+    floatBtn.classList.remove('visible');
+  }
 }
