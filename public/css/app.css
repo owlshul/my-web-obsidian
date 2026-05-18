@@ -1846,9 +1846,40 @@ body.is-fullscreen .content-pane {
 }
 
 .node-toggle-outside-btn svg {
-  width: 10px;
-  height: 10px;
+  display: block;
   pointer-events: none;
+}
+
+/* Complete elimination of outlines, boxes, and bluish focus glows for all interactive map buttons */
+.heading-flowchart-btn,
+.title-flowchart-btn,
+.node-toggle-outside-btn,
+.flowchart-close-btn {
+  outline: none !important;
+  -webkit-tap-highlight-color: transparent !important;
+  box-shadow: none !important;
+}
+
+.heading-flowchart-btn:focus,
+.heading-flowchart-btn:active,
+.heading-flowchart-btn:focus-visible,
+.title-flowchart-btn:focus,
+.title-flowchart-btn:active,
+.title-flowchart-btn:focus-visible,
+.node-toggle-outside-btn:focus,
+.node-toggle-outside-btn:active,
+.node-toggle-outside-btn:focus-visible,
+.flowchart-close-btn:focus,
+.flowchart-close-btn:active,
+.flowchart-close-btn:focus-visible {
+  outline: none !important;
+  box-shadow: none !important;
+}
+
+.heading-flowchart-btn:focus, .heading-flowchart-btn:active,
+.title-flowchart-btn:focus, .title-flowchart-btn:active {
+  border: none !important;
+  background: transparent !important;
 }
 
 /* Descriptive guide label styling in header */

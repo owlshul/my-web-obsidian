@@ -857,7 +857,10 @@ function renderTreeNodeHTML(node, depth = 0) {
       <div class="${nodeClass}" data-heading-index="${node.index}" title="${escHtml(node.name)}">${escHtml(node.name)}</div>
       ${hasChildren ? `
         <button class="node-toggle-outside-btn" title="Click to toggle sub-branches">
-          <i data-lucide="${isCollapsedByDefault ? 'plus' : 'minus'}"></i>
+          ${isCollapsedByDefault ? 
+            `<svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>` : 
+            `<svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>`
+          }
         </button>
       ` : ''}
     </div>
@@ -1080,14 +1083,10 @@ function initTreeNodeCollapsing(flowchartBody) {
         const isCollapsed = childUl.classList.toggle('collapsed');
         li.classList.toggle('children-collapsed', isCollapsed);
         
-        // Toggle plus/minus icon
-        const icon = btn.querySelector('i');
-        if (icon) {
-          icon.setAttribute('data-lucide', isCollapsed ? 'plus' : 'minus');
-          if (window.lucide) {
-            window.lucide.createIcons({ root: btn });
-          }
-        }
+        // Swap inline SVG vectors instantly with zero dependencies or Lucide delay
+        btn.innerHTML = isCollapsed ? 
+          `<svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/><path d="M12 5v14"/></svg>` : 
+          `<svg xmlns="http://www.w3.org/2000/svg" width="9" height="9" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="3.5" stroke-linecap="round" stroke-linejoin="round"><path d="M5 12h14"/></svg>`;
       }
     });
   });
