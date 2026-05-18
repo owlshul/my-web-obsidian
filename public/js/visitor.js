@@ -711,8 +711,12 @@ function toggleFlowchart(clickedHeading, container) {
   header.className = 'flowchart-header';
   header.innerHTML = `
     <span class="flowchart-title">Visual Map</span>
+    <span class="flowchart-hint"><i data-lucide="info"></i>Click floating (+) circles to unfold sub-branches</span>
     <button class="flowchart-close-btn" title="Close map">&times;</button>
   `;
+  if (window.lucide) {
+    window.lucide.createIcons({ root: header });
+  }
   
   const body = document.createElement('div');
   body.className = 'flowchart-body';
@@ -849,10 +853,10 @@ function renderTreeNodeHTML(node, depth = 0) {
   const nodeClass = depth === 0 ? 'flowchart-node parent-node' : 'flowchart-node';
   
   html += `
-    <div class="flowchart-node-wrapper">
+    <div class="flowchart-node-container">
       <div class="${nodeClass}" data-heading-index="${node.index}" title="${escHtml(node.name)}">${escHtml(node.name)}</div>
       ${hasChildren ? `
-        <button class="node-toggle-btn" title="Toggle branches">
+        <button class="node-toggle-outside-btn" title="Click to toggle sub-branches">
           <i data-lucide="${isCollapsedByDefault ? 'plus' : 'minus'}"></i>
         </button>
       ` : ''}
@@ -955,8 +959,12 @@ function toggleRootFlowchart(pane, container) {
   header.className = 'flowchart-header';
   header.innerHTML = `
     <span class="flowchart-title">Visual Map: Entire Note</span>
+    <span class="flowchart-hint"><i data-lucide="info"></i>Click floating (+) circles to unfold sub-branches</span>
     <button class="flowchart-close-btn" title="Close map">&times;</button>
   `;
+  if (window.lucide) {
+    window.lucide.createIcons({ root: header });
+  }
   
   const body = document.createElement('div');
   body.className = 'flowchart-body';
@@ -1062,7 +1070,7 @@ function buildFullNoteTree(container, noteTitleText) {
 }
 
 function initTreeNodeCollapsing(flowchartBody) {
-  flowchartBody.querySelectorAll('.node-toggle-btn').forEach(btn => {
+  flowchartBody.querySelectorAll('.node-toggle-outside-btn').forEach(btn => {
     btn.addEventListener('click', (e) => {
       e.stopPropagation();
       const li = btn.closest('li');

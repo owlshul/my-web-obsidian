@@ -1768,83 +1768,108 @@ body.is-fullscreen .content-pane {
   display: none;
 }
 
-/* Tree Nodes Wrapper */
-.flowchart-node-wrapper {
+/* Tree Nodes Container & Pure Nodes */
+.flowchart-node-container {
   display: inline-flex;
-  align-items: stretch;
-  background: var(--bg-secondary);
-  border: 1px solid var(--glass-border);
-  border-radius: var(--radius-sm);
-  box-shadow: var(--shadow-sm);
-  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1);
-  z-index: 2;
+  align-items: center;
   position: relative;
-  overflow: hidden;
-}
-
-.flowchart-node-wrapper:hover {
-  border-color: var(--accent);
-  transform: translateY(-2px) scale(1.03);
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15);
+  z-index: 2;
 }
 
 .flowchart-node {
-  padding: 0.5rem 0.8rem;
+  border: 1px solid var(--glass-border) !important;
+  padding: 0.5rem 0.95rem !important;
+  text-decoration: none !important;
   color: var(--text-normal) !important;
   font-family: var(--font-ui) !important;
   font-size: 0.72rem !important;
   font-weight: 500 !important;
+  border-radius: var(--radius-sm) !important;
+  background: var(--bg-secondary) !important;
+  transition: all 0.2s cubic-bezier(0.4, 0, 0.2, 1) !important;
+  box-shadow: var(--shadow-sm) !important;
   cursor: pointer !important;
+  user-select: none !important;
   white-space: nowrap !important;
-  max-width: 130px !important;
+  max-width: 140px !important;
   overflow: hidden !important;
   text-overflow: ellipsis !important;
-  user-select: none !important;
   display: inline-flex;
   align-items: center;
-  transition: color 0.15s ease !important;
 }
 
 .flowchart-node:hover {
+  border-color: var(--accent) !important;
   color: var(--accent) !important;
+  transform: translateY(-2px) scale(1.03) !important;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.15) !important;
 }
 
 /* Highlight Parent/Root Node */
 .flowchart-node.parent-node {
+  border-color: var(--accent) !important;
   color: var(--accent) !important;
   font-weight: 600 !important;
+  background: var(--bg-tertiary) !important;
 }
 
-.flowchart-node-wrapper:has(.parent-node) {
-  border-color: var(--accent);
-  background: var(--bg-tertiary);
-}
-
-/* Toggle branches button inside node wrapper */
-.node-toggle-btn {
-  background: transparent !important;
-  border: none !important;
-  border-left: 1px solid var(--glass-border) !important;
+/* Floating branch-line circular toggle button outside the node */
+.node-toggle-outside-btn {
+  position: absolute;
+  right: -11px; /* Center precisely on the outgoing horizontal branch line */
+  top: 50%;
+  transform: translateY(-50%);
+  width: 22px;
+  height: 22px;
+  border-radius: 50% !important;
+  background: var(--bg-primary) !important;
+  border: 1.5px solid var(--glass-border) !important;
   color: var(--text-muted) !important;
-  cursor: pointer !important;
+  cursor: pointer;
   display: inline-flex;
   align-items: center;
   justify-content: center;
-  width: 26px;
-  min-height: 100%;
-  padding: 0 6px !important;
-  transition: color 0.15s ease, background 0.15s ease !important;
+  box-shadow: 0 2px 6px rgba(0, 0, 0, 0.2);
+  z-index: 10;
+  transition: all 0.2s ease !important;
+  padding: 0 !important;
 }
 
-.node-toggle-btn:hover {
+.node-toggle-outside-btn:hover {
   color: var(--accent) !important;
-  background: rgba(255, 255, 255, 0.05) !important;
+  border-color: var(--accent) !important;
+  transform: translateY(-50%) scale(1.2) !important;
+  background: var(--bg-tertiary) !important;
+  box-shadow: 0 2px 8px var(--accent-translucent);
 }
 
-.node-toggle-btn svg {
-  width: 11px;
-  height: 11px;
+.node-toggle-outside-btn svg {
+  width: 10px;
+  height: 10px;
   pointer-events: none;
+}
+
+/* Descriptive guide label styling in header */
+.flowchart-hint {
+  font-family: var(--font-ui);
+  font-size: 0.68rem;
+  color: var(--text-muted);
+  display: inline-flex;
+  align-items: center;
+  gap: 0.3rem;
+  opacity: 0.85;
+}
+
+.flowchart-hint svg {
+  width: 12px;
+  height: 12px;
+  color: var(--accent);
+}
+
+@media (max-width: 768px) {
+  .flowchart-hint {
+    display: none; /* Hide descriptive guide label on small screens to save valuable header space */
+  }
 }
 
 /* Collapsed child ul state */
