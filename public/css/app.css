@@ -1778,7 +1778,7 @@ body.is-fullscreen .content-pane {
 
 .flowchart-node {
   border: 1px solid var(--glass-border) !important;
-  padding: 0.5rem 0.95rem !important;
+  padding: 0.5rem 1.1rem !important;
   text-decoration: none !important;
   color: var(--text-normal) !important;
   font-family: var(--font-ui) !important;
@@ -1791,7 +1791,9 @@ body.is-fullscreen .content-pane {
   cursor: pointer !important;
   user-select: none !important;
   white-space: nowrap !important;
-  max-width: 140px !important;
+  width: max-content !important; /* Stretch dynamically to perfectly fit long titles! */
+  min-width: 100px !important;
+  max-width: 250px !important; /* Extremely generous laptop/desktop limit! */
   overflow: hidden !important;
   text-overflow: ellipsis !important;
   display: inline-flex;
@@ -1869,6 +1871,9 @@ body.is-fullscreen .content-pane {
 @media (max-width: 768px) {
   .flowchart-hint {
     display: none; /* Hide descriptive guide label on small screens to save valuable header space */
+  }
+  .flowchart-node {
+    max-width: 130px !important; /* Cap width strictly on mobile to prevent overflow! */
   }
 }
 

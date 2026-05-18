@@ -846,7 +846,7 @@ function buildHeadingTree(clickedHeading) {
 
 function renderTreeNodeHTML(node, depth = 0) {
   const hasChildren = node.children && node.children.length > 0;
-  const isCollapsedByDefault = depth >= 2; // Collapse grandchildren and deeper by default
+  const isCollapsedByDefault = depth >= 1; // Collapse all levels below root by default
   
   let html = `<li class="${hasChildren && isCollapsedByDefault ? 'children-collapsed' : ''}">`;
   
