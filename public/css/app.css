@@ -2,6 +2,14 @@
    App Layout — uses Primary theme tokens from primary-web.css
 ───────────────────────────────────────────────────────────────────────────── */
 
+/* Universal mobile tap highlight removal & outline cleanup */
+* {
+  -webkit-tap-highlight-color: transparent !important;
+}
+*:focus {
+  outline: none !important;
+}
+
 /* ─── Shell ───────────────────────────────────────────────────────────────── */
 #app {
   display: flex;
