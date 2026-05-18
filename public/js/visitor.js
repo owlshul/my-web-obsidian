@@ -108,9 +108,19 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   // ─── Font Size (Dynamic Scale from 0.7 to 1.6) ─────────────────────────────
-  let fontSize = parseFloat(localStorage.getItem('fontSize') || '1.0');
+  let rawFontSize = localStorage.getItem('fontSize');
+  let fontSize = 1.0;
+  if (rawFontSize) {
+    let parsed = parseFloat(rawFontSize);
+    if (!isNaN(parsed) && parsed > 0) {
+      fontSize = parsed;
+    }
+  }
+
   function applyFontSize(scale) {
-    fontSize = Math.max(0.7, Math.min(1.6, scale));
+    let num = parseFloat(scale);
+    if (isNaN(num)) num = 1.0;
+    fontSize = Math.max(0.7, Math.min(1.6, num));
     localStorage.setItem('fontSize', fontSize.toFixed(2));
     const pane = document.getElementById('contentPane');
     if (pane) {
