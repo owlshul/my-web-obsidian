@@ -1634,83 +1634,111 @@ body.is-fullscreen .content-pane {
   cursor: grabbing;
 }
 
-/* ─── CSS Tree Flowchart Structure ─── */
+/* ─── CSS Tree Flowchart Structure (Horizontal / Left-to-Right) ─── */
 .flowchart-tree {
   display: inline-block;
-  min-width: 100%;
-  text-align: center;
+  text-align: left;
+  padding: 10px;
 }
 
 .flowchart-tree ul {
-  padding-top: 20px;
-  position: relative;
-  transition: all 0.3s;
   display: flex;
+  flex-direction: column;
   justify-content: center;
-  padding-left: 0;
+  padding-left: 30px; /* Space for connecting lines */
+  position: relative;
   margin: 0;
 }
 
 .flowchart-tree li {
   list-style-type: none;
   position: relative;
-  padding: 20px 6px 0 6px;
-  transition: all 0.3s;
+  padding: 8px 0;
+  margin: 0;
   display: flex;
-  flex-direction: column;
-  align-items: center;
+  flex-direction: row;
+  align-items: center; /* Center node vertically with its sub-tree */
 }
 
-/* Drawing organizational chart lines */
-.flowchart-tree li::before, 
+/* Horizontal line connecting sibling back to the vertical trunk */
 .flowchart-tree li::after {
   content: '';
   position: absolute;
-  top: 0;
-  right: 50%;
+  left: -30px;
+  top: 50%;
   border-top: 1.5px solid var(--glass-border);
-  width: 50%;
-  height: 20px;
+  width: 30px;
+  height: 0;
+  transform: translateY(-50%);
 }
 
-.flowchart-tree li::after {
-  right: auto;
-  left: 50%;
+/* Vertical trunk line connecting all siblings at this level */
+.flowchart-tree li::before {
+  content: '';
+  position: absolute;
+  left: -30px;
+  top: 0;
   border-left: 1.5px solid var(--glass-border);
+  width: 30px;
+  height: 100%;
 }
 
-.flowchart-tree li:only-child::after, 
+/* Top half line for first child: curves from left-center to child direction */
+.flowchart-tree li:first-child::before {
+  top: 50%;
+  height: 50%;
+  border-top-left-radius: 6px;
+  border-top: 1.5px solid var(--glass-border);
+}
+
+/* Bottom half line for last child: curves from left-center to child direction */
+.flowchart-tree li:last-child::before {
+  height: 50%;
+  border-bottom-left-radius: 6px;
+  border-bottom: 1.5px solid var(--glass-border);
+}
+
+/* Remove vertical trunk lines completely if it is the only child */
 .flowchart-tree li:only-child::before {
   display: none;
 }
 
-.flowchart-tree li:only-child {
-  padding-top: 0;
-}
-
-.flowchart-tree li:first-child::before, 
-.flowchart-tree li:last-child::after {
-  border: 0 none;
-}
-
-.flowchart-tree li:last-child::before {
-  border-right: 1.5px solid var(--glass-border);
-  border-radius: 0 6px 0 0;
-}
-
-.flowchart-tree li:first-child::after {
-  border-radius: 6px 0 0 0;
-}
-
-.flowchart-tree ul ul::before {
+/* Remove horizontal line if only child */
+.flowchart-tree li:only-child::after {
   content: '';
   position: absolute;
-  top: 0;
-  left: 50%;
-  border-left: 1.5px solid var(--glass-border);
-  width: 0;
-  height: 20px;
-  transform: translateX(-50%);
+  left: -30px;
+  top: 50%;
+  border-top: 1.5px solid var(--glass-border);
+  width: 30px;
+  height: 0;
+  transform: translateY(-50%);
+}
+
+/* Sub-tree horizontal connecting trunk line from the parent node */
+.flowchart-tree ul::before {
+  content: '';
+  position: absolute;
+  left: 0;
+  top: 50%;
+  border-top: 1.5px solid var(--glass-border);
+  width: 30px;
+  height: 0;
+  transform: translateY(-50%);
+}
+
+/* Clear line guides for the root level */
+.flowchart-tree > ul {
+  padding-left: 0;
+}
+
+.flowchart-tree > ul::before {
+  display: none;
+}
+
+.flowchart-tree > ul > li::before,
+.flowchart-tree > ul > li::after {
+  display: none;
 }
 
 /* Tree Nodes */

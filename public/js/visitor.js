@@ -733,9 +733,17 @@ function toggleFlowchart(clickedHeading, container) {
         nodeEl.style.transform = 'scale(0.95)';
         setTimeout(() => nodeEl.style.transform = '', 150);
         
-        const yOffset = -80; // height of topbar + padding
-        const y = targetHeading.getBoundingClientRect().top + window.pageYOffset + yOffset;
-        document.getElementById('contentPane')?.scrollTo({ top: y, behavior: 'smooth' });
+        const pane = document.getElementById('contentPane');
+        if (pane) {
+          const paneRect = pane.getBoundingClientRect();
+          const targetRect = targetHeading.getBoundingClientRect();
+          const relativeTop = targetRect.top - paneRect.top + pane.scrollTop;
+          const yOffset = -20; // 20px padding from top
+          pane.scrollTo({
+            top: relativeTop + yOffset,
+            behavior: 'smooth'
+          });
+        }
         
         targetHeading.style.transition = 'text-shadow 0.3s ease, color 0.3s ease';
         targetHeading.style.textShadow = '0 0 12px var(--accent)';
