@@ -107,25 +107,31 @@ document.addEventListener('DOMContentLoaded', () => {
     document.getElementById('contentPane')?.scrollTo({ top: 0, behavior: 'smooth' });
   });
 
-  // ─── Font Size ────────────────────────────────────────────────────────────
-  const sizes = ['small', 'medium', 'large'];
-  function applyFontSize(size) {
-    fontSize = size;
-    localStorage.setItem('fontSize', size);
-    document.getElementById('contentPane')?.setAttribute('data-font-size', size);
+  // ─── Font Size (Dynamic Scale from 0.7 to 1.6) ─────────────────────────────
+  let fontSize = parseFloat(localStorage.getItem('fontSize') || '1.0');
+  function applyFontSize(scale) {
+    fontSize = Math.max(0.7, Math.min(1.6, scale));
+    localStorage.setItem('fontSize', fontSize.toFixed(2));
+    const pane = document.getElementById('contentPane');
+    if (pane) {
+      pane.style.setProperty('--text-scale', fontSize.toFixed(2));
+      // Map to backward-compatible class strings for safety
+      let token = 'medium';
+      if (fontSize <= 0.9) token = 'small';
+      else if (fontSize >= 1.15) token = 'large';
+      pane.setAttribute('data-font-size', token);
+    }
   }
   applyFontSize(fontSize);
 
   document.getElementById('fontSizeDec')?.addEventListener('click', () => {
-    const idx = sizes.indexOf(fontSize);
-    if (idx > 0) applyFontSize(sizes[idx - 1]);
+    applyFontSize(fontSize - 0.05);
   });
   document.getElementById('fontSizeReset')?.addEventListener('click', () => {
-    applyFontSize('medium');
+    applyFontSize(1.0);
   });
   document.getElementById('fontSizeInc')?.addEventListener('click', () => {
-    const idx = sizes.indexOf(fontSize);
-    if (idx < sizes.length - 1) applyFontSize(sizes[idx + 1]);
+    applyFontSize(fontSize + 0.05);
   });
 
   initResizers();
@@ -210,8 +216,6 @@ document.addEventListener('DOMContentLoaded', () => {
     if (m) openNote(m[1] + (m[1].endsWith('.md') ? '' : '.md'));
     else showWelcome();
   });
-
-  initFloatingOutline();
 });
 
 // ─── Theme ───────────────────────────────────────────────────────────────────
@@ -603,60 +607,4 @@ function initResizers() {
     leftResizer?.classList.remove('dragging');
     rightResizer?.classList.remove('dragging');
   });
-}
-
-// ─── Floating Outline Toggle Setup ──────────────────────────────────────────
-function initFloatingOutline() {
-  const outlinePane = document.getElementById('outlinePane');
-  if (!outlinePane) return;
-
-  // Create floating button dynamically
-  const floatBtn = document.createElement('button');
-  floatBtn.id = 'floatingOutlineToggle';
-  floatBtn.className = 'floating-outline-toggle';
-  floatBtn.title = 'Toggle outline';
-  floatBtn.innerHTML = `<i data-lucide="list"></i>`;
-  document.body.appendChild(floatBtn);
-
-  // Initialize icon
-  if (window.lucide) {
-    window.lucide.createIcons({
-      node: floatBtn
-    });
-  }
-
-  // Handle click
-  floatBtn.addEventListener('click', (e) => {
-    e.stopPropagation();
-    outlinePane.classList.toggle('collapsed');
-    outlinePane.classList.remove('peeking');
-    updateFloatingOutlineVisibility();
-  });
-
-  // Observe class mutations on outlinePane (handles hidden, collapsed, and peeking changes instantly!)
-  const observer = new MutationObserver(() => {
-    updateFloatingOutlineVisibility();
-  });
-  observer.observe(outlinePane, { attributes: true, attributeFilter: ['class'] });
-
-  // Initial check
-  updateFloatingOutlineVisibility();
-}
-
-function updateFloatingOutlineVisibility() {
-  const outlinePane = document.getElementById('outlinePane');
-  const floatBtn = document.getElementById('floatingOutlineToggle');
-  if (!outlinePane || !floatBtn) return;
-
-  // Show floating button ONLY if:
-  // 1. Outline is active (does not have 'hidden' class)
-  // 2. Outline is collapsed
-  const isOutlineActive = !outlinePane.classList.contains('hidden');
-  const isOutlineCollapsed = outlinePane.classList.contains('collapsed');
-
-  if (isOutlineActive && isOutlineCollapsed) {
-    floatBtn.classList.add('visible');
-  } else {
-    floatBtn.classList.remove('visible');
-  }
 }

@@ -1439,62 +1439,61 @@ body.is-fullscreen .content-pane {
     height: calc(100vh - var(--topbar-h)) !important;
   }
   
-  /* Declutter topbar on mobile to prevent squishiness */
-  #exportPdfBtn,
-  .font-size-controls,
+  /* Hide the breadcrumb on mobile to make ample room for all controls */
+  .breadcrumb,
   .topbar-sep {
     display: none !important;
   }
 }
 
-/* ─── Floating Outline Toggle Button ────────────────────────────────────────── */
-.floating-outline-toggle {
-  position: fixed;
-  bottom: calc(2rem + 50px);
-  right: 2rem;
-  width: 42px;
-  height: 42px;
-  border-radius: 50%;
-  background: var(--glass-bg);
-  backdrop-filter: blur(12px);
-  -webkit-backdrop-filter: blur(12px);
-  border: 1px solid var(--glass-border);
-  color: var(--text-normal);
-  display: flex;
-  align-items: center;
-  justify-content: center;
-  cursor: pointer;
-  z-index: 999;
-  box-shadow: 0 4px 15px rgba(0, 0, 0, 0.15);
-  transition: opacity 0.25s ease, transform 0.25s ease, background 0.12s ease, color 0.12s ease, box-shadow 0.12s ease;
-  opacity: 0;
-  pointer-events: none;
-  transform: translateY(10px);
+/* ─── Boxless and Outline-free Topbar Buttons ────────────────────────────── */
+.topbar button,
+.topbar .btn-icon,
+.topbar .btn,
+.topbar .btn-ghost,
+.topbar .font-size-btn,
+.editor-topbar button,
+.editor-topbar .btn-icon,
+.editor-topbar .btn,
+.editor-topbar .btn-ghost {
+  background: transparent !important;
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
+  border-radius: 0 !important;
+  padding: 0 !important;
+  margin: 0 !important;
+  min-width: 32px !important;
+  height: 32px !important;
+  display: inline-flex !important;
+  align-items: center !important;
+  justify-content: center !important;
+  color: var(--text-muted) !important;
+  transition: color 0.15s ease, transform 0.1s ease !important;
 }
 
-.floating-outline-toggle.visible {
-  opacity: 1;
-  transform: translateY(0);
-  pointer-events: auto;
+.topbar button:hover,
+.topbar .btn-icon:hover,
+.topbar .btn:hover,
+.topbar .btn-ghost:hover,
+.topbar .font-size-btn:hover,
+.editor-topbar button:hover,
+.editor-topbar .btn-icon:hover,
+.editor-topbar .btn:hover,
+.editor-topbar .btn-ghost:hover {
+  background: transparent !important;
+  color: var(--accent) !important; /* Elegant gold accent color feedback on hover! */
+  border: none !important;
+  outline: none !important;
+  box-shadow: none !important;
 }
 
-.floating-outline-toggle:hover {
-  background: var(--accent);
-  color: hsl(31, 45%, 12%) !important;
-  box-shadow: var(--shadow-md);
-  transform: scale(1.08);
-}
-
-.floating-outline-toggle svg {
-  width: 20px;
-  height: 20px;
-}
-
-@media (max-width: 640px) {
-  .floating-outline-toggle {
-    bottom: calc(1rem + 50px);
-    right: 1rem;
-    width: 44px;
-    height: 44px;
-  }
+.topbar button:active,
+.topbar .btn-icon:active,
+.topbar .btn-ghost:active,
+.topbar .font-size-btn:active,
+.editor-topbar button:active,
+.editor-topbar .btn-icon:active {
+  background: transparent !important;
+  transform: scale(0.9) !important; /* Subtle tactile scale, but absolutely NO highlights or boxes! */
 }
