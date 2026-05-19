@@ -38,10 +38,26 @@
       </div>
     </div>
 
+    <div class="sidebar-tabs">
+      <button class="sidebar-tab active" id="tabFiles" title="Show Notes"><i data-lucide="folder"></i> Notes</button>
+      <button class="sidebar-tab" id="tabBookmarks" title="Show Bookmarks & Highlights"><i data-lucide="bookmark"></i> Bookmarks</button>
+    </div>
+
     <div class="file-tree" id="fileTree">
       <div class="tree-empty" style="padding-top:2rem">
         <div style="display:flex;justify-content:center;margin-bottom:.5rem;color:var(--text-faint)"><i data-lucide="sprout" style="width:32px;height:32px;"></i></div>
         Loading notes…
+      </div>
+    </div>
+
+    <div class="file-tree hidden" id="bookmarksTree">
+      <div class="bookmarks-section-title">Saved Notes</div>
+      <div id="bookmarksList" class="bookmarks-list">
+        <div class="tree-empty" style="padding:1rem .85rem;">No bookmarked notes yet.</div>
+      </div>
+      <div class="bookmarks-section-title" style="margin-top:1.25rem;">My Excerpts</div>
+      <div id="highlightsList" class="bookmarks-list">
+        <div class="tree-empty" style="padding:1rem .85rem;">No text highlights yet.</div>
       </div>
     </div>
 
@@ -111,6 +127,11 @@ ab padhl lete hain bhai.
 </button>
 
 <div class="toast-wrap" id="toastWrap"></div>
+
+<!-- Floating selection text highlight popover -->
+<div id="highlightPopover" class="highlight-popover hidden">
+  <button class="highlight-popover-btn" id="btnHighlightText"><i data-lucide="highlighter"></i> Highlight</button>
+</div>
 
 <!-- Marked.js for perfect Markdown rendering -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
