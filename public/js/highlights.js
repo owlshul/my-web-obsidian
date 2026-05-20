@@ -223,23 +223,46 @@ window.HighlightsManager = (function() {
 
   function handleSelectionChange() {
     if (isAutoHighlight) return;
-    if (isMobile()) return;
     
     const selection = window.getSelection();
     const floatingMenu = document.getElementById('floatingHighlighter');
     
     if (!selection || selection.isCollapsed || !currentNoteBody) {
       floatingMenu?.classList.add('hidden');
+      if (isMobile()) lastSelectionRange = null;
       return;
     }
 
     if (!currentNoteBody.contains(selection.anchorNode) || !currentNoteBody.contains(selection.focusNode)) {
       floatingMenu?.classList.add('hidden');
+      if (isMobile()) lastSelectionRange = null;
       return;
+    }
+
+    if (isMobile()) {
+      try {
+        const range = selection.getRangeAt(0);
+        const text = range.toString().trim();
+        if (text) {
+          lastSelectionRange = range.cloneRange();
+          if (floatingMenu) {
+            floatingMenu.classList.add('mobile-docked');
+            floatingMenu.style.left = '';
+            floatingMenu.style.top = '';
+            floatingMenu.classList.remove('hidden');
+          }
+        } else {
+          floatingMenu?.classList.add('hidden');
+          lastSelectionRange = null;
+        }
+      } catch (err) {
+        // Selection range query may temporarily fail during changes
+      }
     }
   }
 
   function handleSelectionEnd(e) {
+    if (isMobile()) return; // On mobile, selectionchange event handles this instantly
     if (e.target.closest('#floatingHighlighter')) return;
 
     clearTimeout(selectionEndTimeout);
@@ -273,20 +296,14 @@ window.HighlightsManager = (function() {
       } else {
         const rect = range.getBoundingClientRect();
         if (floatingMenu) {
-          if (isMobile()) {
-            floatingMenu.classList.add('mobile-docked');
-            floatingMenu.style.left = '';
-            floatingMenu.style.top = '';
-          } else {
-            floatingMenu.classList.remove('mobile-docked');
-            const center = rect.left + rect.width / 2;
-            floatingMenu.style.left = `${center}px`;
-            floatingMenu.style.top = `${rect.top}px`;
-          }
+          floatingMenu.classList.remove('mobile-docked');
+          const center = rect.left + rect.width / 2;
+          floatingMenu.style.left = `${center}px`;
+          floatingMenu.style.top = `${rect.top}px`;
           floatingMenu.classList.remove('hidden');
         }
       }
-    }, 150);
+    }, 100);
   }
 
   function createHighlightFromSelection(selection) {
