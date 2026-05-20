@@ -73,6 +73,8 @@ window.HighlightsManager = (function() {
       const color = btn.dataset.color;
       if (color === activeColor) {
         btn.classList.add('active');
+      } else {
+        btn.classList.remove('active');
       }
       btn.addEventListener('click', (e) => {
         e.stopPropagation();
@@ -430,12 +432,16 @@ window.HighlightsManager = (function() {
       // Simpler robust method: wrap each text node in the range individually.
       const nodesToWrap = [];
       const extractWalker = document.createTreeWalker(range.commonAncestorContainer, NodeFilter.SHOW_TEXT, null, false);
-      let curr = extractWalker.nextNode();
-      while(curr) {
-        if (range.intersectsNode(curr)) {
+      
+      let curr = extractWalker.currentNode;
+      if (curr.nodeType === Node.TEXT_NODE && range.intersectsNode(curr)) {
+        nodesToWrap.push(curr);
+      }
+      
+      while ((curr = extractWalker.nextNode())) {
+        if (range.intersectsNode(curr) && !nodesToWrap.includes(curr)) {
           nodesToWrap.push(curr);
         }
-        curr = extractWalker.nextNode();
       }
 
       nodesToWrap.forEach(n => {

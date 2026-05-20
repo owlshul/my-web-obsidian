@@ -2269,6 +2269,8 @@ mark.highlight.blue:hover {
   background: transparent;
   border: none;
   box-shadow: none;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .floating-highlighter.mobile-docked button {
@@ -2288,11 +2290,14 @@ mark.highlight.blue:hover {
   justify-content: center;
   touch-action: manipulation;
   -webkit-tap-highlight-color: transparent;
+  user-select: none;
+  -webkit-user-select: none;
 }
 
 .floating-highlighter.mobile-docked button svg {
   width: 20px;
   height: 20px;
+  pointer-events: none;
 }
 
 .floating-highlighter.mobile-docked button:active {
@@ -2306,4 +2311,5 @@ mark.highlight.blue:hover {
 
 .floating-highlighter.mobile-docked .floating-btn-text {
   display: none !important;
+  pointer-events: none;
 }
