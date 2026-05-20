@@ -121,15 +121,22 @@ window.HighlightsManager = (function() {
     });
 
     // Floating Button Container level click (highly reliable)
-    document.getElementById('floatingHighlighter')?.addEventListener('click', (e) => {
-      e.stopPropagation();
-      const selection = window.getSelection();
-      if (!selection.isCollapsed) {
-        createHighlightFromSelection(selection);
-        selection.removeAllRanges();
-        document.getElementById('floatingHighlighter')?.classList.add('hidden');
-      }
-    });
+    const floatingBtn = document.getElementById('floatingHighlighter');
+    if (floatingBtn) {
+      // Prevent selection from clearing when tapping the button
+      floatingBtn.addEventListener('mousedown', (e) => e.preventDefault());
+      floatingBtn.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
+      
+      floatingBtn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        const selection = window.getSelection();
+        if (!selection.isCollapsed) {
+          createHighlightFromSelection(selection);
+          selection.removeAllRanges();
+          floatingBtn.classList.add('hidden');
+        }
+      });
+    }
 
     // Text Selection Listeners
     document.addEventListener('selectionchange', handleSelectionChange);
@@ -139,73 +146,69 @@ window.HighlightsManager = (function() {
 
   let selectionEndTimeout = null;
 
-  function processSelection() {
+  function handleSelectionChange() {
+    if (isAutoHighlight) return; // Floating menu disabled in auto mode
     const selection = window.getSelection();
     const floatingMenu = document.getElementById('floatingHighlighter');
-
+    
     if (!selection || selection.isCollapsed || !currentNoteBody) {
       floatingMenu?.classList.add('hidden');
       return;
     }
 
+    // Ensure selection is inside note body
     if (!currentNoteBody.contains(selection.anchorNode) || !currentNoteBody.contains(selection.focusNode)) {
       floatingMenu?.classList.add('hidden');
       return;
     }
-
-    const range = selection.getRangeAt(0);
-    const text = range.toString().trim();
-    if (!text) return;
-
-    if (isAutoHighlight) {
-      createHighlightFromSelection(selection);
-      selection.removeAllRanges();
-    } else {
-      // Show floating menu
-      const rect = range.getBoundingClientRect();
-      if (floatingMenu) {
-        const isMobile = window.innerWidth <= 768 || 'ontouchstart' in window;
-        if (isMobile) {
-          floatingMenu.classList.add('mobile-docked');
-          floatingMenu.style.left = '';
-          floatingMenu.style.top = '';
-        } else {
-          floatingMenu.classList.remove('mobile-docked');
-          // Float centered horizontally above the selection
-          const center = rect.left + rect.width / 2;
-          floatingMenu.style.left = `${center}px`;
-          floatingMenu.style.top = `${rect.top}px`; // position: fixed takes viewport-relative rect.top directly!
-        }
-        floatingMenu.classList.remove('hidden');
-      }
-    }
-  }
-
-  function handleSelectionChange() {
-    const floatingMenu = document.getElementById('floatingHighlighter');
-    const selection = window.getSelection();
-    
-    // Hide immediately if selection is lost or collapsed
-    if (!selection || selection.isCollapsed) {
-      floatingMenu?.classList.add('hidden');
-    }
-    
-    // Debounce processing so it triggers when dragging handles stabilizes
-    clearTimeout(selectionEndTimeout);
-    selectionEndTimeout = setTimeout(() => {
-      processSelection();
-    }, 400); // 400ms is a safe delay for mobile handle drags
   }
 
   function handleSelectionEnd(e) {
     // Ignore clicks on the floating button itself
-    if (e && e.target && e.target.closest && e.target.closest('#floatingHighlighter')) return;
+    if (e.target.closest('#floatingHighlighter')) return;
 
-    // Fast path for mouseup / quick taps
     clearTimeout(selectionEndTimeout);
     selectionEndTimeout = setTimeout(() => {
-      processSelection();
-    }, 50);
+      const selection = window.getSelection();
+      const floatingMenu = document.getElementById('floatingHighlighter');
+
+      if (!selection || selection.isCollapsed || !currentNoteBody) {
+        floatingMenu?.classList.add('hidden');
+        return;
+      }
+
+      if (!currentNoteBody.contains(selection.anchorNode) || !currentNoteBody.contains(selection.focusNode)) {
+        floatingMenu?.classList.add('hidden');
+        return;
+      }
+
+      const range = selection.getRangeAt(0);
+      const text = range.toString().trim();
+      if (!text) return;
+
+      if (isAutoHighlight) {
+        createHighlightFromSelection(selection);
+        selection.removeAllRanges();
+      } else {
+        // Show floating menu
+        const rect = range.getBoundingClientRect();
+        if (floatingMenu) {
+          const isMobile = window.innerWidth <= 768 || 'ontouchstart' in window;
+          if (isMobile) {
+            floatingMenu.classList.add('mobile-docked');
+            floatingMenu.style.left = '';
+            floatingMenu.style.top = '';
+          } else {
+            floatingMenu.classList.remove('mobile-docked');
+            // Float centered horizontally above the selection
+            const center = rect.left + rect.width / 2;
+            floatingMenu.style.left = `${center}px`;
+            floatingMenu.style.top = `${rect.top}px`; // position: fixed takes viewport-relative rect.top directly!
+          }
+          floatingMenu.classList.remove('hidden');
+        }
+      }
+    }, 100);
   }
 
   function createHighlightFromSelection(selection) {

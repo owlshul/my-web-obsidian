@@ -2246,11 +2246,11 @@ mark.highlight.blue:hover {
 /* Mobile Docked Layout */
 .floating-highlighter.mobile-docked {
   bottom: 80px; /* Elevated to avoid collision with Chrome bottom address/nav bar */
-  left: 50% !important;
+  left: 20px !important;
   top: auto !important;
-  transform: translateX(-50%) !important;
+  transform: none !important;
   margin-top: 0;
-  border-radius: 99px;
+  border-radius: 50%;
   padding: 0; /* Zero container padding */
   background: transparent;
   border: none;
@@ -2260,11 +2260,18 @@ mark.highlight.blue:hover {
 .floating-highlighter.mobile-docked button {
   color: #ffffff; /* Contrast against accent color */
   background: var(--accent);
-  padding: 12px 24px; /* Large, comfortable tap target */
-  border-radius: 99px;
-  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+  padding: 0;
+  width: 56px;
+  height: 56px;
+  border-radius: 50%;
+  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.2);
   border: 1px solid var(--accent);
   transition: transform 0.15s ease, background 0.15s ease;
+}
+
+.floating-highlighter.mobile-docked button svg {
+  width: 24px;
+  height: 24px;
 }
 
 .floating-highlighter.mobile-docked button:active {
@@ -2277,5 +2284,5 @@ mark.highlight.blue:hover {
 }
 
 .floating-highlighter.mobile-docked .floating-btn-text {
-  display: inline;
+  display: none !important;
 }
