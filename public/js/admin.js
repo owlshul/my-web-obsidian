@@ -18,7 +18,7 @@ let lastClickedPath = null;
 
 // ─── Mobile Sidebar Auto-Close ───────────────────────────────────────────────
 function collapseSidebarsOnMobile() {
-  if (window.innerWidth <= 640) {
+  if (window.innerWidth <= 1024) {
     document.getElementById('sidebar')?.classList.add('collapsed');
     document.getElementById('outlinePane')?.classList.add('collapsed');
   }
@@ -30,8 +30,8 @@ document.addEventListener('DOMContentLoaded', async () => {
   const auth = await fetch('/api/auth').then(r => r.json());
   if (window.lucide) window.lucide.createIcons();
   
-  // Collapse sidebars on mobile by default
-  if (window.innerWidth <= 640) {
+  // Collapse sidebars on tablet/mobile by default (≤1024px)
+  if (window.innerWidth <= 1024) {
     document.getElementById('sidebar')?.classList.add('collapsed');
     document.getElementById('outlinePane')?.classList.add('collapsed');
   }

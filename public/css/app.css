@@ -2053,7 +2053,7 @@ mark.highlight.blue:hover {
   display: none;
 }
 
-@media (max-width: 640px) {
+@media (max-width: 768px) {
   .desktop-tools, .desktop-sep {
     display: none !important;
   }
@@ -2245,28 +2245,33 @@ mark.highlight.blue:hover {
 
 /* Mobile Docked Layout */
 .floating-highlighter.mobile-docked {
-  bottom: 80px; /* Elevated to avoid collision with Chrome bottom address/nav bar */
+  bottom: 120px;
   left: 20px !important;
   top: auto !important;
   transform: none !important;
   margin-top: 0;
   border-radius: 50%;
-  padding: 0; /* Zero container padding */
+  padding: 0;
   background: transparent;
   border: none;
   box-shadow: none;
 }
 
 .floating-highlighter.mobile-docked button {
-  color: #ffffff; /* Contrast against accent color */
+  color: #ffffff;
   background: var(--accent);
   padding: 0;
-  width: 56px;
-  height: 56px;
+  width: 60px;
+  height: 60px;
   border-radius: 50%;
-  box-shadow: 0 4px 12px rgba(0, 0, 0, 0.3), 0 8px 24px rgba(0, 0, 0, 0.2);
-  border: 1px solid var(--accent);
+  box-shadow: 0 6px 16px rgba(0, 0, 0, 0.35), 0 10px 28px rgba(0, 0, 0, 0.25);
+  border: 2px solid rgba(255, 255, 255, 0.25);
   transition: transform 0.15s ease, background 0.15s ease;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  touch-action: manipulation;
+  -webkit-tap-highlight-color: transparent;
 }
 
 .floating-highlighter.mobile-docked button svg {

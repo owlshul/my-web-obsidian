@@ -3,11 +3,15 @@
 ───────────────────────────────────────────────────────────────────────────── */
 
 window.HighlightsManager = (function() {
-  let isAutoHighlight = false;
+  let isAutoHighlight = localStorage.getItem('autoHighlightEnabled') === 'true';
   let currentNotePath = null;
   let currentNoteBody = null;
   
   const STORAGE_KEY = 'obsidian_highlights';
+
+  function isMobile() {
+    return window.innerWidth <= 768 || 'ontouchstart' in window;
+  }
 
   function getHighlights() {
     try {
@@ -24,11 +28,14 @@ window.HighlightsManager = (function() {
   let activeColor = localStorage.getItem('activeHighlightColor') || 'yellow';
 
   function toggleAutoHighlight() {
+    if (isMobile()) return;
+    
     isAutoHighlight = !isAutoHighlight;
+    localStorage.setItem('autoHighlightEnabled', isAutoHighlight);
+    
     const desktopBtn = document.getElementById('toggleHighlighter');
     if (desktopBtn) desktopBtn.classList.toggle('active', isAutoHighlight);
     
-    // Show/hide color palette
     const colorPalette = document.getElementById('colorPalette');
     if (colorPalette) {
       if (isAutoHighlight) {
@@ -38,15 +45,28 @@ window.HighlightsManager = (function() {
       }
     }
     
-    // Hide floating button if auto is turned on
     if (isAutoHighlight) {
       document.getElementById('floatingHighlighter')?.classList.add('hidden');
     }
   }
 
   function initUI() {
-    // Topbar Toggles
-    document.getElementById('toggleHighlighter')?.addEventListener('click', toggleAutoHighlight);
+    // Restore auto-highlight state on desktop
+    if (!isMobile() && isAutoHighlight) {
+      const desktopBtn = document.getElementById('toggleHighlighter');
+      if (desktopBtn) {
+        desktopBtn.classList.add('active');
+        const colorPalette = document.getElementById('colorPalette');
+        if (colorPalette) colorPalette.classList.remove('hidden');
+        document.getElementById('floatingHighlighter')?.classList.add('hidden');
+      }
+    }
+    
+    // Topbar Toggles - only bind on desktop
+    const toggleBtn = document.getElementById('toggleHighlighter');
+    if (toggleBtn && !isMobile()) {
+      toggleBtn.addEventListener('click', toggleAutoHighlight);
+    }
     
     // Desktop Color Palette buttons
     document.querySelectorAll('.color-btn').forEach(btn => {
@@ -63,7 +83,7 @@ window.HighlightsManager = (function() {
       });
     });
 
-    // Mobile popover Show Highlights button
+    // Mobile popover Show Highlights button - opens sidebar with highlights
     document.getElementById('popoverShowHighlights')?.addEventListener('click', () => {
       document.getElementById('mobileToolsPopover')?.hidePopover();
       
@@ -120,22 +140,40 @@ window.HighlightsManager = (function() {
       document.getElementById('outlineView')?.classList.add('active');
     });
 
-    // Floating Button Container level click (highly reliable)
+    // Floating Button Container - improved for mobile
     const floatingBtn = document.getElementById('floatingHighlighter');
     if (floatingBtn) {
-      // Prevent selection from clearing when tapping the button
       floatingBtn.addEventListener('mousedown', (e) => e.preventDefault());
       floatingBtn.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
       
-      floatingBtn.addEventListener('click', (e) => {
+      const handleHighlight = (e) => {
         e.stopPropagation();
-        const selection = window.getSelection();
-        if (!selection.isCollapsed) {
+        e.preventDefault();
+        
+        let selection = window.getSelection();
+        
+        // On mobile, try to restore selection from stored range
+        if ((!selection || selection.isCollapsed) && lastSelectionRange && currentNoteBody) {
+          try {
+            const sel = window.getSelection();
+            sel.removeAllRanges();
+            sel.addRange(lastSelectionRange);
+            selection = sel;
+          } catch (err) {
+            console.warn('Could not restore selection:', err);
+          }
+        }
+        
+        if (selection && !selection.isCollapsed) {
           createHighlightFromSelection(selection);
           selection.removeAllRanges();
+          lastSelectionRange = null;
           floatingBtn.classList.add('hidden');
         }
-      });
+      };
+      
+      floatingBtn.addEventListener('click', handleHighlight);
+      floatingBtn.addEventListener('touchend', handleHighlight, { passive: false });
     }
 
     // Text Selection Listeners
@@ -145,9 +183,12 @@ window.HighlightsManager = (function() {
   }
 
   let selectionEndTimeout = null;
+  let lastSelectionRange = null;
 
   function handleSelectionChange() {
-    if (isAutoHighlight) return; // Floating menu disabled in auto mode
+    if (isAutoHighlight) return;
+    if (isMobile()) return;
+    
     const selection = window.getSelection();
     const floatingMenu = document.getElementById('floatingHighlighter');
     
@@ -156,7 +197,6 @@ window.HighlightsManager = (function() {
       return;
     }
 
-    // Ensure selection is inside note body
     if (!currentNoteBody.contains(selection.anchorNode) || !currentNoteBody.contains(selection.focusNode)) {
       floatingMenu?.classList.add('hidden');
       return;
@@ -164,7 +204,6 @@ window.HighlightsManager = (function() {
   }
 
   function handleSelectionEnd(e) {
-    // Ignore clicks on the floating button itself
     if (e.target.closest('#floatingHighlighter')) return;
 
     clearTimeout(selectionEndTimeout);
@@ -174,11 +213,13 @@ window.HighlightsManager = (function() {
 
       if (!selection || selection.isCollapsed || !currentNoteBody) {
         floatingMenu?.classList.add('hidden');
+        lastSelectionRange = null;
         return;
       }
 
       if (!currentNoteBody.contains(selection.anchorNode) || !currentNoteBody.contains(selection.focusNode)) {
         floatingMenu?.classList.add('hidden');
+        lastSelectionRange = null;
         return;
       }
 
@@ -186,29 +227,30 @@ window.HighlightsManager = (function() {
       const text = range.toString().trim();
       if (!text) return;
 
+      // Store selection range for mobile button to use
+      lastSelectionRange = range.cloneRange();
+
       if (isAutoHighlight) {
         createHighlightFromSelection(selection);
         selection.removeAllRanges();
+        lastSelectionRange = null;
       } else {
-        // Show floating menu
         const rect = range.getBoundingClientRect();
         if (floatingMenu) {
-          const isMobile = window.innerWidth <= 768 || 'ontouchstart' in window;
-          if (isMobile) {
+          if (isMobile()) {
             floatingMenu.classList.add('mobile-docked');
             floatingMenu.style.left = '';
             floatingMenu.style.top = '';
           } else {
             floatingMenu.classList.remove('mobile-docked');
-            // Float centered horizontally above the selection
             const center = rect.left + rect.width / 2;
             floatingMenu.style.left = `${center}px`;
-            floatingMenu.style.top = `${rect.top}px`; // position: fixed takes viewport-relative rect.top directly!
+            floatingMenu.style.top = `${rect.top}px`;
           }
           floatingMenu.classList.remove('hidden');
         }
       }
-    }, 100);
+    }, 150);
   }
 
   function createHighlightFromSelection(selection) {
