@@ -2134,6 +2134,7 @@ mark.highlight:hover {
   display: flex;
   align-items: center;
   justify-content: center;
+  gap: 6px;
 }
 
 .floating-highlighter button:hover {
@@ -2144,4 +2145,38 @@ mark.highlight:hover {
 .floating-highlighter button svg {
   width: 16px;
   height: 16px;
+}
+
+.floating-btn-text {
+  display: none;
+  font-family: var(--font-ui);
+  font-size: 0.85rem;
+  font-weight: 600;
+}
+
+/* Mobile Docked Layout */
+.floating-highlighter.mobile-docked {
+  bottom: 24px;
+  left: 50% !important;
+  top: auto !important;
+  transform: translateX(-50%) !important;
+  margin-top: 0;
+  border-radius: 99px;
+  padding: 6px 16px;
+  background: var(--accent);
+  border-color: var(--accent);
+  box-shadow: 0 10px 25px -5px rgba(0, 0, 0, 0.3), 0 8px 10px -6px rgba(0, 0, 0, 0.2);
+}
+
+.floating-highlighter.mobile-docked button {
+  color: #ffffff; /* Contrast against accent color */
+}
+
+.floating-highlighter.mobile-docked button:hover {
+  background: transparent;
+  color: #ffffff;
+}
+
+.floating-highlighter.mobile-docked .floating-btn-text {
+  display: inline;
 }

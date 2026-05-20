@@ -141,11 +141,21 @@ window.HighlightsManager = (function() {
         createHighlightFromSelection(selection);
         selection.removeAllRanges();
       } else {
-        // Show floating menu near the end of selection
+        // Show floating menu
         const rect = range.getBoundingClientRect();
         if (floatingMenu) {
-          floatingMenu.style.left = `${rect.right}px`;
-          floatingMenu.style.top = `${rect.bottom + window.scrollY + 10}px`; // 10px below
+          const isMobile = window.innerWidth <= 768 || 'ontouchstart' in window;
+          if (isMobile) {
+            floatingMenu.classList.add('mobile-docked');
+            floatingMenu.style.left = '';
+            floatingMenu.style.top = '';
+          } else {
+            floatingMenu.classList.remove('mobile-docked');
+            // Float centered horizontally above the selection
+            const center = rect.left + rect.width / 2;
+            floatingMenu.style.left = `${center}px`;
+            floatingMenu.style.top = `${rect.top}px`; // position: fixed takes viewport-relative rect.top directly!
+          }
           floatingMenu.classList.remove('hidden');
         }
       }
