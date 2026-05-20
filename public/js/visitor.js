@@ -168,11 +168,12 @@ document.addEventListener('DOMContentLoaded', () => {
       const rightToggleBtn = e.target.closest('#rightSidebarToggle');
       const sidebarContent = e.target.closest('.sidebar');
       const rightSidebarContent = e.target.closest('.sidebar-right');
+      const popoverContent = e.target.closest('[popover], .popover');
       
-      if (sidebar && !sidebar.classList.contains('collapsed') && !toggleBtn && !sidebarContent) {
+      if (sidebar && !sidebar.classList.contains('collapsed') && !toggleBtn && !sidebarContent && !popoverContent) {
         sidebar.classList.add('collapsed');
       }
-      if (sidebarRight && !sidebarRight.classList.contains('collapsed') && !rightToggleBtn && !rightSidebarContent) {
+      if (sidebarRight && !sidebarRight.classList.contains('collapsed') && !rightToggleBtn && !rightSidebarContent && !popoverContent) {
         sidebarRight.classList.add('collapsed');
       }
     }

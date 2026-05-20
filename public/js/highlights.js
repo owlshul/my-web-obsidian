@@ -83,7 +83,7 @@ window.HighlightsManager = (function() {
       });
     });
 
-    // Mobile popover Show Highlights button - opens sidebar with highlights
+// Mobile popover Show Highlights button - opens sidebar with highlights
     document.getElementById('popoverShowHighlights')?.addEventListener('click', () => {
       document.getElementById('mobileToolsPopover')?.hidePopover();
       
@@ -91,14 +91,57 @@ window.HighlightsManager = (function() {
       if (outlinePane) {
         outlinePane.classList.remove('collapsed');
         outlinePane.classList.remove('hidden');
+        outlinePane.style.display = 'flex';
       }
       
-      document.getElementById('outlineView')?.classList.remove('active');
-      document.getElementById('outlineView')?.classList.add('hidden');
-      document.getElementById('highlightsView')?.classList.remove('hidden');
-      document.getElementById('highlightsView')?.classList.add('active');
-      renderSidebar();
+      showHighlightsView();
     });
+
+    // Helper function to show highlights view
+    function showHighlightsView() {
+      const outlinePane = document.getElementById('outlinePane');
+      if (outlinePane) {
+        outlinePane.classList.remove('collapsed');
+        outlinePane.classList.remove('hidden');
+        outlinePane.style.display = 'flex';
+      }
+      
+      const outlineView = document.getElementById('outlineView');
+      const highlightsView = document.getElementById('highlightsView');
+      
+      if (outlineView) {
+        outlineView.classList.remove('active');
+        outlineView.classList.add('hidden');
+      }
+      if (highlightsView) {
+        highlightsView.classList.remove('hidden');
+        highlightsView.classList.add('active');
+      }
+      
+      renderSidebar();
+    }
+
+    // Helper function to show outline view
+    function showOutlineView() {
+      const outlinePane = document.getElementById('outlinePane');
+      if (outlinePane) {
+        outlinePane.classList.remove('collapsed');
+        outlinePane.classList.remove('hidden');
+        outlinePane.style.display = 'flex';
+      }
+      
+      const outlineView = document.getElementById('outlineView');
+      const highlightsView = document.getElementById('highlightsView');
+      
+      if (highlightsView) {
+        highlightsView.classList.remove('active');
+        highlightsView.classList.add('hidden');
+      }
+      if (outlineView) {
+        outlineView.classList.remove('hidden');
+        outlineView.classList.add('active');
+      }
+    }
     
     // Clear Highlights
     const clearHighlights = () => {
@@ -126,18 +169,11 @@ window.HighlightsManager = (function() {
 
     // Sidebar View Toggles
     document.getElementById('viewHighlightsBtn')?.addEventListener('click', () => {
-      document.getElementById('outlineView')?.classList.remove('active');
-      document.getElementById('outlineView')?.classList.add('hidden');
-      document.getElementById('highlightsView')?.classList.remove('hidden');
-      document.getElementById('highlightsView')?.classList.add('active');
-      renderSidebar();
+      showHighlightsView();
     });
 
     document.getElementById('backToOutlineBtn')?.addEventListener('click', () => {
-      document.getElementById('highlightsView')?.classList.remove('active');
-      document.getElementById('highlightsView')?.classList.add('hidden');
-      document.getElementById('outlineView')?.classList.remove('hidden');
-      document.getElementById('outlineView')?.classList.add('active');
+      showOutlineView();
     });
 
     // Floating Button Container - improved for mobile
