@@ -180,7 +180,16 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('mainArea')?.addEventListener('click', (e) => {
-    if (window.innerWidth <= 1024 && !e.target.closest('.topbar-toggle')) {
+    if (window.innerWidth <= 1024) {
+      if (
+        e.target.closest('.sidebar') || 
+        e.target.closest('.sidebar-right') || 
+        e.target.closest('.topbar-toggle') || 
+        e.target.closest('[popover]') || 
+        e.target.closest('.popover')
+      ) {
+        return;
+      }
       collapseSidebarsOnMobile();
     }
   });
