@@ -65,12 +65,48 @@
           <i data-lucide="file-down" style="width:14px;height:14px;"></i> PDF
         </button>
         <div class="topbar-sep"></div>
-        <div class="font-size-controls">
-          <button class="font-size-btn" id="fontSizeDec" title="Decrease text size">A−</button>
-          <button class="font-size-btn reset" id="fontSizeReset" title="Reset text size">A</button>
-          <button class="font-size-btn" id="fontSizeInc" title="Increase text size">A+</button>
+
+        <!-- Desktop Tools -->
+        <div class="desktop-tools">
+          <button class="btn-icon" id="toggleHighlighter" title="Toggle Auto-Highlight Mode">
+            <i data-lucide="highlighter"></i>
+          </button>
+          <button class="btn-icon" id="clearHighlightsBtn" title="Clear Highlights in this note">
+            <i data-lucide="eraser"></i>
+          </button>
+          <div class="topbar-sep"></div>
+          <div class="font-size-controls">
+            <button class="font-size-btn" id="fontSizeDec" title="Decrease text size">A−</button>
+            <button class="font-size-btn reset" id="fontSizeReset" title="Reset text size">A</button>
+            <button class="font-size-btn" id="fontSizeInc" title="Increase text size">A+</button>
+          </div>
         </div>
-        <div class="topbar-sep"></div>
+
+        <!-- Mobile Tools -->
+        <button popovertarget="mobileToolsPopover" class="btn-icon mobile-only" title="Tools">
+          <i data-lucide="pencil"></i>
+        </button>
+        <div id="mobileToolsPopover" popover="auto" class="mobile-tools-popover">
+          <div class="popover-row">
+            <button class="btn-icon popover-btn" id="popoverToggleHighlighter" title="Toggle Auto-Highlight">
+              <i data-lucide="highlighter"></i>
+              <span>Auto-Highlight</span>
+            </button>
+          </div>
+          <div class="popover-row">
+            <button class="btn-icon popover-btn" id="popoverClearHighlightsBtn" title="Clear Highlights">
+              <i data-lucide="eraser"></i>
+              <span>Clear Highlights</span>
+            </button>
+          </div>
+          <div class="popover-row font-size-row">
+            <button class="font-size-btn" id="popoverFontSizeDec">A−</button>
+            <button class="font-size-btn reset" id="popoverFontSizeReset">A</button>
+            <button class="font-size-btn" id="popoverFontSizeInc">A+</button>
+          </div>
+        </div>
+
+        <div class="topbar-sep desktop-sep"></div>
         <button class="btn-icon theme-toggle" id="toggleThemeTopbar" title="Toggle theme"><i data-lucide="sun"></i></button>
         <div class="topbar-sep"></div>
         <button class="btn-icon" id="fullscreenBtn" title="Toggle fullscreen"><i data-lucide="maximize"></i></button>
@@ -98,8 +134,24 @@ ab padhl lete hain bhai.
       </div>
       <div class="resizer" id="rightResizer" style="display:none;"></div>
       <aside class="sidebar-right hidden" id="outlinePane">
-        <div class="outline-title">Outline</div>
-        <ul class="outline-list" id="outlineList"></ul>
+        <!-- Outline View -->
+        <div id="outlineView" class="sidebar-view active">
+          <div class="outline-header">
+            <div class="outline-title">Outline</div>
+            <button class="btn-link" id="viewHighlightsBtn">Highlights</button>
+          </div>
+          <ul class="outline-list" id="outlineList"></ul>
+        </div>
+        <!-- Highlights View -->
+        <div id="highlightsView" class="sidebar-view hidden">
+          <div class="outline-header">
+            <button class="btn-link back-btn" id="backToOutlineBtn">
+              <i data-lucide="chevron-left"></i> Outline
+            </button>
+          </div>
+          <div class="outline-title" style="margin-top: 0.5rem;">Highlights</div>
+          <div id="highlightsListContainer" class="highlights-container"></div>
+        </div>
       </aside>
     </div>
   </main>
@@ -112,8 +164,16 @@ ab padhl lete hain bhai.
 
 <div class="toast-wrap" id="toastWrap"></div>
 
+<!-- Floating Highlighter Button -->
+<div id="floatingHighlighter" class="floating-highlighter hidden">
+  <button id="floatingHighlightBtn" title="Highlight Selection">
+    <i data-lucide="highlighter"></i>
+  </button>
+</div>
+
 <!-- Marked.js for perfect Markdown rendering -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
+<script src="/js/highlights.js"></script>
 <script src="/js/visitor.js"></script>
 </body>
 </html>

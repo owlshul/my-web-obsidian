@@ -11,7 +11,7 @@ let fontSize = localStorage.getItem('fontSize') || 'medium';
 
 // ─── Mobile Sidebar Auto-Close ───────────────────────────────────────────────
 function collapseSidebarsOnMobile() {
-  if (window.innerWidth <= 640) {
+  if (window.innerWidth <= 1024) {
     document.getElementById('sidebar')?.classList.add('collapsed');
     document.getElementById('outlinePane')?.classList.add('collapsed');
   }
@@ -27,7 +27,7 @@ document.addEventListener('DOMContentLoaded', () => {
   document.body.scrollTop = 0;
   
   // Collapse sidebars on mobile by default
-  if (window.innerWidth <= 640) {
+  if (window.innerWidth <= 1024) {
     document.getElementById('sidebar')?.classList.add('collapsed');
     document.getElementById('outlinePane')?.classList.add('collapsed');
   }
@@ -143,6 +143,17 @@ document.addEventListener('DOMContentLoaded', () => {
   document.getElementById('fontSizeInc')?.addEventListener('click', () => {
     applyFontSize(fontSize + 0.05);
   });
+  
+  // Mobile popover duplicates
+  document.getElementById('popoverFontSizeDec')?.addEventListener('click', () => {
+    applyFontSize(fontSize - 0.05);
+  });
+  document.getElementById('popoverFontSizeReset')?.addEventListener('click', () => {
+    applyFontSize(1.0);
+  });
+  document.getElementById('popoverFontSizeInc')?.addEventListener('click', () => {
+    applyFontSize(fontSize + 0.05);
+  });
 
   initResizers();
   initReadingProgress();
@@ -150,7 +161,7 @@ document.addEventListener('DOMContentLoaded', () => {
 
   // Mobile: click anywhere outside sidebar closes it
   document.body.addEventListener('click', (e) => {
-    if (window.innerWidth <= 640) {
+    if (window.innerWidth <= 1024) {
       const sidebar = document.getElementById('sidebar');
       const sidebarRight = document.getElementById('outlinePane');
       const toggleBtn = e.target.closest('#sidebarToggle');
@@ -168,14 +179,14 @@ document.addEventListener('DOMContentLoaded', () => {
   });
 
   document.getElementById('mainArea')?.addEventListener('click', (e) => {
-    if (window.innerWidth <= 640 && !e.target.closest('.topbar-toggle')) {
+    if (window.innerWidth <= 1024 && !e.target.closest('.topbar-toggle')) {
       collapseSidebarsOnMobile();
     }
   });
 
   // Desktop Hover-to-Open Sidebar Peek (Coordinate-based high sensitivity tracker)
   document.addEventListener('mousemove', e => {
-    if (window.innerWidth <= 640) return; // Only on desktop
+    if (window.innerWidth <= 1024) return; // Only on desktop
     
     // Left sidebar peek
     const sidebar = document.getElementById('sidebar');
@@ -372,6 +383,7 @@ async function openNote(notePath) {
     pane.appendChild(header);
     pane.appendChild(divider);
     pane.appendChild(body);
+    if (window.HighlightsManager) window.HighlightsManager.onNoteLoaded(body, np);
     wrapCodeBlocks(body);
     updateOutline(body);
     initHeadingFlowcharts(body);
@@ -396,6 +408,7 @@ function showWelcome() {
   document.querySelectorAll('.tree-note').forEach(el => el.classList.remove('active'));
   const outlinePane = document.getElementById('outlinePane');
   if (outlinePane) outlinePane.classList.add('hidden');
+  if (window.HighlightsManager) window.HighlightsManager.clearSidebar();
   resetReadingProgress();
 }
 
@@ -460,7 +473,7 @@ function resetReadingProgress() {
 
 // ─── Swipe Gestures ─────────────────────────────────────────────────────────
 function initSwipeGestures() {
-  if (window.innerWidth > 640) return;
+  if (window.innerWidth > 1024) return;
   let touchStartX = 0;
   document.addEventListener('touchstart', e => {
     touchStartX = e.changedTouches[0].screenX;
