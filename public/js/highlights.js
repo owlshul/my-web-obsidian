@@ -176,19 +176,14 @@ window.HighlightsManager = (function() {
       showOutlineView();
     });
 
-    // Floating Button Container - improved for mobile
     const floatingBtn = document.getElementById('floatingHighlighter');
     if (floatingBtn) {
-      floatingBtn.addEventListener('mousedown', (e) => e.preventDefault());
-      floatingBtn.addEventListener('touchstart', (e) => e.preventDefault(), { passive: false });
-      
       const handleHighlight = (e) => {
         e.stopPropagation();
         e.preventDefault();
         
         let selection = window.getSelection();
         
-        // On mobile, try to restore selection from stored range
         if ((!selection || selection.isCollapsed) && lastSelectionRange && currentNoteBody) {
           try {
             const sel = window.getSelection();
@@ -209,7 +204,10 @@ window.HighlightsManager = (function() {
       };
       
       floatingBtn.addEventListener('click', handleHighlight);
-      floatingBtn.addEventListener('touchend', handleHighlight, { passive: false });
+      floatingBtn.addEventListener('touchend', (e) => {
+        e.preventDefault();
+        handleHighlight(e);
+      }, { passive: false });
     }
 
     // Text Selection Listeners
@@ -219,6 +217,7 @@ window.HighlightsManager = (function() {
   }
 
   let selectionEndTimeout = null;
+  let selectionHideTimeout = null;
   let lastSelectionRange = null;
 
   function handleSelectionChange() {
@@ -227,42 +226,71 @@ window.HighlightsManager = (function() {
     const selection = window.getSelection();
     const floatingMenu = document.getElementById('floatingHighlighter');
     
-    if (!selection || selection.isCollapsed || !currentNoteBody) {
-      floatingMenu?.classList.add('hidden');
-      if (isMobile()) lastSelectionRange = null;
+    if (!selection || !currentNoteBody) {
+      clearTimeout(selectionHideTimeout);
+      if (isMobile()) {
+        selectionHideTimeout = setTimeout(() => {
+          floatingMenu?.classList.add('hidden');
+        }, 300);
+      } else {
+        floatingMenu?.classList.add('hidden');
+      }
+      return;
+    }
+
+    if (selection.isCollapsed) {
+      clearTimeout(selectionHideTimeout);
+      if (isMobile()) {
+        selectionHideTimeout = setTimeout(() => {
+          floatingMenu?.classList.add('hidden');
+        }, 300);
+      } else {
+        floatingMenu?.classList.add('hidden');
+      }
       return;
     }
 
     if (!currentNoteBody.contains(selection.anchorNode) || !currentNoteBody.contains(selection.focusNode)) {
-      floatingMenu?.classList.add('hidden');
-      if (isMobile()) lastSelectionRange = null;
+      clearTimeout(selectionHideTimeout);
+      if (isMobile()) {
+        selectionHideTimeout = setTimeout(() => {
+          floatingMenu?.classList.add('hidden');
+        }, 300);
+      } else {
+        floatingMenu?.classList.add('hidden');
+      }
       return;
     }
 
-    if (isMobile()) {
-      try {
-        const range = selection.getRangeAt(0);
-        const text = range.toString().trim();
-        if (text) {
-          lastSelectionRange = range.cloneRange();
-          if (floatingMenu) {
-            floatingMenu.classList.add('mobile-docked');
-            floatingMenu.style.left = '';
-            floatingMenu.style.top = '';
-            floatingMenu.classList.remove('hidden');
-          }
+    clearTimeout(selectionHideTimeout);
+    try {
+      const range = selection.getRangeAt(0);
+      const text = range.toString().trim();
+      if (!text) {
+        clearTimeout(selectionHideTimeout);
+        if (isMobile()) {
+          selectionHideTimeout = setTimeout(() => {
+            floatingMenu?.classList.add('hidden');
+          }, 300);
         } else {
           floatingMenu?.classList.add('hidden');
-          lastSelectionRange = null;
         }
-      } catch (err) {
-        // Selection range query may temporarily fail during changes
+        return;
       }
+
+      lastSelectionRange = range.cloneRange();
+
+      if (isMobile()) {
+        floatingMenu?.classList.add('mobile-docked');
+        floatingMenu?.classList.remove('hidden');
+      }
+    } catch (err) {
+      // Selection range query may temporarily fail during changes
     }
   }
 
   function handleSelectionEnd(e) {
-    if (isMobile()) return; // On mobile, selectionchange event handles this instantly
+    if (isMobile()) return;
     if (e.target.closest('#floatingHighlighter')) return;
 
     clearTimeout(selectionEndTimeout);
@@ -270,9 +298,14 @@ window.HighlightsManager = (function() {
       const selection = window.getSelection();
       const floatingMenu = document.getElementById('floatingHighlighter');
 
-      if (!selection || selection.isCollapsed || !currentNoteBody) {
+      if (!selection || !currentNoteBody) {
         floatingMenu?.classList.add('hidden');
         lastSelectionRange = null;
+        return;
+      }
+
+      if (selection.isCollapsed) {
+        floatingMenu?.classList.add('hidden');
         return;
       }
 
@@ -282,11 +315,19 @@ window.HighlightsManager = (function() {
         return;
       }
 
-      const range = selection.getRangeAt(0);
-      const text = range.toString().trim();
-      if (!text) return;
+      let range;
+      try {
+        range = selection.getRangeAt(0);
+      } catch (err) {
+        return;
+      }
 
-      // Store selection range for mobile button to use
+      const text = range.toString().trim();
+      if (!text) {
+        floatingMenu?.classList.add('hidden');
+        return;
+      }
+
       lastSelectionRange = range.cloneRange();
 
       if (isAutoHighlight) {
@@ -295,7 +336,7 @@ window.HighlightsManager = (function() {
         lastSelectionRange = null;
       } else {
         const rect = range.getBoundingClientRect();
-        if (floatingMenu) {
+        if (floatingMenu && rect.width > 0 && rect.height > 0) {
           floatingMenu.classList.remove('mobile-docked');
           const center = rect.left + rect.width / 2;
           floatingMenu.style.left = `${center}px`;
@@ -303,7 +344,7 @@ window.HighlightsManager = (function() {
           floatingMenu.classList.remove('hidden');
         }
       }
-    }, 100);
+    }, 50);
   }
 
   function createHighlightFromSelection(selection) {
