@@ -71,6 +71,12 @@
           <button class="btn-icon" id="toggleHighlighter" title="Toggle Auto-Highlight Mode">
             <i data-lucide="highlighter"></i>
           </button>
+          <div id="colorPalette" class="color-palette hidden">
+            <button class="color-btn yellow active" data-color="yellow" title="Yellow"></button>
+            <button class="color-btn green" data-color="green" title="Green"></button>
+            <button class="color-btn pink" data-color="pink" title="Pink"></button>
+            <button class="color-btn blue" data-color="blue" title="Blue"></button>
+          </div>
           <button class="btn-icon" id="clearHighlightsBtn" title="Clear Highlights in this note">
             <i data-lucide="eraser"></i>
           </button>
@@ -88,9 +94,9 @@
         </button>
         <div id="mobileToolsPopover" popover="auto" class="mobile-tools-popover">
           <div class="popover-row">
-            <button class="btn-icon popover-btn" id="popoverToggleHighlighter" title="Toggle Auto-Highlight">
-              <i data-lucide="highlighter"></i>
-              <span>Auto-Highlight</span>
+            <button class="btn-icon popover-btn" id="popoverShowHighlights" title="Show Highlights">
+              <i data-lucide="panel-right-open"></i>
+              <span>Show Highlights</span>
             </button>
           </div>
           <div class="popover-row">

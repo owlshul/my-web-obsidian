@@ -21,12 +21,22 @@ window.HighlightsManager = (function() {
     localStorage.setItem(STORAGE_KEY, JSON.stringify(data));
   }
 
+  let activeColor = localStorage.getItem('activeHighlightColor') || 'yellow';
+
   function toggleAutoHighlight() {
     isAutoHighlight = !isAutoHighlight;
     const desktopBtn = document.getElementById('toggleHighlighter');
-    const mobileBtn = document.getElementById('popoverToggleHighlighter');
     if (desktopBtn) desktopBtn.classList.toggle('active', isAutoHighlight);
-    if (mobileBtn) mobileBtn.classList.toggle('active', isAutoHighlight);
+    
+    // Show/hide color palette
+    const colorPalette = document.getElementById('colorPalette');
+    if (colorPalette) {
+      if (isAutoHighlight) {
+        colorPalette.classList.remove('hidden');
+      } else {
+        colorPalette.classList.add('hidden');
+      }
+    }
     
     // Hide floating button if auto is turned on
     if (isAutoHighlight) {
@@ -37,7 +47,38 @@ window.HighlightsManager = (function() {
   function initUI() {
     // Topbar Toggles
     document.getElementById('toggleHighlighter')?.addEventListener('click', toggleAutoHighlight);
-    document.getElementById('popoverToggleHighlighter')?.addEventListener('click', toggleAutoHighlight);
+    
+    // Desktop Color Palette buttons
+    document.querySelectorAll('.color-btn').forEach(btn => {
+      const color = btn.dataset.color;
+      if (color === activeColor) {
+        btn.classList.add('active');
+      }
+      btn.addEventListener('click', (e) => {
+        e.stopPropagation();
+        document.querySelectorAll('.color-btn').forEach(b => b.classList.remove('active'));
+        btn.classList.add('active');
+        activeColor = color;
+        localStorage.setItem('activeHighlightColor', activeColor);
+      });
+    });
+
+    // Mobile popover Show Highlights button
+    document.getElementById('popoverShowHighlights')?.addEventListener('click', () => {
+      document.getElementById('mobileToolsPopover')?.hidePopover();
+      
+      const outlinePane = document.getElementById('outlinePane');
+      if (outlinePane) {
+        outlinePane.classList.remove('collapsed');
+        outlinePane.classList.remove('hidden');
+      }
+      
+      document.getElementById('outlineView')?.classList.remove('active');
+      document.getElementById('outlineView')?.classList.add('hidden');
+      document.getElementById('highlightsView')?.classList.remove('hidden');
+      document.getElementById('highlightsView')?.classList.add('active');
+      renderSidebar();
+    });
     
     // Clear Highlights
     const clearHighlights = () => {
@@ -79,8 +120,9 @@ window.HighlightsManager = (function() {
       document.getElementById('outlineView')?.classList.add('active');
     });
 
-    // Floating Button Click
-    document.getElementById('floatingHighlightBtn')?.addEventListener('click', () => {
+    // Floating Button Container level click (highly reliable)
+    document.getElementById('floatingHighlighter')?.addEventListener('click', (e) => {
+      e.stopPropagation();
       const selection = window.getSelection();
       if (!selection.isCollapsed) {
         createHighlightFromSelection(selection);
@@ -179,7 +221,8 @@ window.HighlightsManager = (function() {
       text: text,
       startOffset: startOffset,
       length: text.length,
-      timestamp: Date.now()
+      timestamp: Date.now(),
+      color: activeColor // Save current color choice
     };
 
     const data = getHighlights();
@@ -268,7 +311,7 @@ window.HighlightsManager = (function() {
         if (beforeText) fragment.appendChild(document.createTextNode(beforeText));
         
         const mark = document.createElement('mark');
-        mark.className = 'highlight';
+        mark.className = `highlight ${highlight.color || 'yellow'}`;
         mark.dataset.id = highlight.id;
         mark.textContent = textToWrap;
         
