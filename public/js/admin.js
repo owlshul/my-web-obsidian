@@ -48,6 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const prevWrap = document.getElementById('previewWrap');
     
     if (isPreviewMode) {
+      saveNote(); // Save immediately when entering preview mode
       btn.innerHTML = '<i data-lucide="pen" style="width:14px;height:14px;"></i> Edit';
       
       // Fade out editor, then show preview
@@ -296,6 +297,7 @@ function buildFolder(folder) {
   const header = document.createElement('div');
   header.className = 'tree-folder-header';
   header.innerHTML = `
+    <span class="drag-grip" style="cursor:grab; opacity:0; transition:opacity 0.2s; margin-left:-4px; margin-right:4px; display:flex; align-items:center"><i data-lucide="grip-vertical" style="width:12px;height:12px;"></i></span>
     <span class="folder-chevron open"><i data-lucide="chevron-right" style="width:12px;height:12px;"></i></span>
     <span class="folder-icon"><i data-lucide="folder" style="width:14px;height:14px;"></i></span>
     <span class="folder-name">${esc(folder.name)}</span>
@@ -376,6 +378,7 @@ function buildNoteItem(note) {
   if (currentNote?.path === note.path) el.classList.add('active');
 
   el.innerHTML = `
+    <span class="drag-grip" style="cursor:grab; opacity:0; transition:opacity 0.2s; margin-left:-4px; margin-right:4px; display:flex; align-items:center"><i data-lucide="grip-vertical" style="width:12px;height:12px;"></i></span>
     <span class="note-icon"><i data-lucide="file-text" style="width:14px;height:14px;"></i></span>
     <span class="note-title">${esc(note.title || note.name)}</span>
     <span class="note-visibility ${note.visibility}" title="${note.visibility === 'public' ? 'Public' : 'Private'}">

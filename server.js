@@ -44,8 +44,8 @@ marked.setOptions({ gfm: true, breaks: true });
 
 // ─── Middleware ───────────────────────────────────────────────────────────────
 app.use(express.json({ limit: '10mb' }));
-app.use(express.static(path.join(__dirname, 'public')));
-app.use('/theme.css', express.static(path.join(__dirname, 'theme.css')));
+app.use(express.static(path.join(__dirname, 'public'), { setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate') }));
+app.use('/theme.css', express.static(path.join(__dirname, 'theme.css'), { setHeaders: (res) => res.setHeader('Cache-Control', 'no-cache, no-store, must-revalidate') }));
 
 app.use(session({
   secret: SESSION_SECRET,

@@ -33,6 +33,10 @@
       transform: scale(1.02);
       transition: all 0.2s ease;
     }
+    
+    .tree-folder-header:hover .drag-grip, .tree-note:hover .drag-grip {
+      opacity: 0.5 !important;
+    }
   </style>
 </head>
 <body class="theme-dark">
@@ -132,7 +136,7 @@
         <button class="toolbar-btn" data-action="callout-warning" title="Warning callout"><i data-lucide="alert-triangle"></i></button>
         <div class="sep"></div>
         <button class="btn btn-ghost" id="previewToggleBtn" style="font-size:.75rem; padding:.2rem .5rem; height: 26px;">
-          <i data-lucide="eye" style="width:14px;height:14px;"></i> Preview
+          <i data-lucide="glasses" style="width:14px;height:14px;"></i> Preview
         </button>
         <button class="btn btn-ghost" id="exportPdfBtn" style="font-size:.75rem; padding:.2rem .5rem; height: 26px; margin-left: 6px;" title="Export Note as a clean PDF">
           <i data-lucide="file-down" style="width:14px;height:14px;"></i> PDF
@@ -172,6 +176,6 @@
 
 <!-- Marked.js for perfect Markdown rendering in Preview -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script type="module" src="/js/admin.js"></script>
+<script type="module" src="/js/admin.js?v=4"></script>
 </body>
 </html>
