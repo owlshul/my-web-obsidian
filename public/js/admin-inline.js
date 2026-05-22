@@ -210,7 +210,7 @@
     if (!isAdmin) return;
     const np = notePath.endsWith('.md') ? notePath : notePath + '.md';
     try {
-      const res = await fetch('/api/note/' + np);
+      const res = await fetch('/api/note/' + np.split('/').map(encodeURIComponent).join('/'));
       if (!res.ok) return;
       const note = await res.json();
       currentNote = note;
@@ -424,7 +424,7 @@
     currentNote.title = title;
 
     try {
-      const res = await fetch('/api/note/' + currentNote.path, {
+      const res = await fetch('/api/note/' + currentNote.path.split('/').map(encodeURIComponent).join('/'), {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ content, title, visibility }),
@@ -563,7 +563,8 @@
       }
 
       try {
-        const res = await fetch(`/api/${type}/${path}`, {
+        const encodedPath = path.split('/').map(encodeURIComponent).join('/');
+        const res = await fetch(`/api/${type}/${encodedPath}`, {
           method: 'DELETE',
           headers: { 'Content-Type': 'application/json' },
         });
@@ -697,12 +698,13 @@
         const isNote = type === 'note';
         
         // OPTIMISTIC UI: Remove from tree
-        const el = document.querySelector(`[data-path="${itemPath}"]`);
+        const el = document.querySelector(`[data-path="${itemPath.replace(/"/g, '\\"')}"]`);
         if (el) el.closest(isNote ? '.tree-note' : '.tree-folder')?.remove();
         
-        const url = isNote
-          ? '/api/note/' + (itemPath.endsWith('.md') ? itemPath : itemPath + '.md')
-          : '/api/folder/' + itemPath;
+        const np = isNote ? (itemPath.endsWith('.md') ? itemPath : itemPath + '.md') : itemPath;
+        const encodedPath = np.split('/').map(encodeURIComponent).join('/');
+        const url = isNote ? '/api/note/' + encodedPath : '/api/folder/' + encodedPath;
+        
         const res = await fetch(url, { method: 'DELETE' });
         if (!res.ok) { toast('Delete failed', 'error'); if (typeof loadTree === 'function') loadTree(); return; }
         toast('Deleted', 'info');

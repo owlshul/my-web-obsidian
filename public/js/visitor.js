@@ -380,7 +380,7 @@ async function openNote(notePath) {
   const pdfBtn = document.getElementById('exportPdfBtn');
   if (pdfBtn) pdfBtn.style.display = 'none';
   try {
-    const res = await fetch('/api/note/' + np);
+    const res = await fetch('/api/note/' + np.split('/').map(encodeURIComponent).join('/'));
     if (!res.ok) throw new Error(res.status === 403 ? 'Private note' : 'Not found');
     const note = await res.json();
     const html = renderMarkdown(note.content);
