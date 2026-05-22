@@ -272,7 +272,19 @@
     const ep = document.getElementById('adminEditorPane');
     if (ep) ep.style.display = 'none';
     const contentPane = document.getElementById('contentPane');
-    if (contentPane) contentPane.style.display = '';
+    if (contentPane) {
+      contentPane.style.display = '';
+      // Re-render markdown instantly so changes are visible
+      if (currentNote && currentNote.content) {
+        const body = contentPane.querySelector('.note-body');
+        if (body && typeof renderMarkdown === 'function') {
+          body.innerHTML = renderMarkdown(currentNote.content);
+          if (typeof wrapCodeBlocks === 'function') wrapCodeBlocks(body);
+          if (typeof updateOutline === 'function') updateOutline(body);
+          if (typeof initHeadingFlowcharts === 'function') initHeadingFlowcharts(body);
+        }
+      }
+    }
   }
 
   function buildEditorPane() {
@@ -513,14 +525,10 @@
 
   /* ── CRUD Modals ────────────────────────────────────────────────────────── */
   function showNewNoteModal(inFolder) {
-    const getFolders = (nodes) => {
-      let f = [];
-      nodes.forEach(n => {
-        if (n.type === 'folder') { f.push(n.path || n.name); f.push(...getFolders(n.children || [])); }
-      });
-      return f;
-    };
-    const folders = getFolders(window.tree || []);
+    // Get all folders from the DOM reliably
+    const folderEls = document.querySelectorAll('.tree-folder-header');
+    const folders = Array.from(folderEls).map(el => el.dataset.path).filter(Boolean);
+    
     let folderOptions = '<option value="">(Root)</option>';
     folders.forEach(f => {
       folderOptions += `<option value="${xss(f)}" ${f === inFolder ? 'selected' : ''}>${xss(f)}</option>`;
@@ -658,77 +666,73 @@
     const ft = document.getElementById('fileTree');
     if (!ft) return;
     
-    // Setup items when tree loads
+    // Enable draggability using observer
     const observer = new MutationObserver(() => {
       if (!isAdmin) return;
       ft.querySelectorAll('.tree-note, .tree-folder-header').forEach(el => {
-        if (!el.draggable) {
-          el.draggable = true;
-          el.addEventListener('dragstart', handleDragStart);
-          el.addEventListener('dragover', handleDragOver);
-          el.addEventListener('dragleave', handleDragLeave);
-          el.addEventListener('drop', handleDrop);
-        }
+        if (el.draggable !== true) el.draggable = true;
       });
     });
     observer.observe(ft, { childList: true, subtree: true });
     
+    // Use event delegation for all drag and drop
+    ft.addEventListener('dragstart', e => {
+      if (!isAdmin) return;
+      const el = e.target.closest('.tree-note') || e.target.closest('.tree-folder-header');
+      if (!el) return;
+      const path = el.dataset.path;
+      if (path) {
+        e.dataTransfer.setData('text/plain', path);
+        e.dataTransfer.effectAllowed = 'move';
+      }
+    });
+
     ft.addEventListener('dragover', e => {
+      if (!isAdmin) return;
       e.preventDefault();
-      if (e.target === ft || e.target.classList.contains('tree-empty')) {
+      e.dataTransfer.dropEffect = 'move';
+      
+      const folder = e.target.closest('.tree-folder-header');
+      if (folder) {
+        folder.classList.add('drag-over');
+      } else if (e.target === ft || e.target.classList.contains('tree-empty')) {
         ft.classList.add('drag-over');
       }
     });
+
     ft.addEventListener('dragleave', e => {
-      if (e.target === ft || e.target.classList.contains('tree-empty')) {
-        ft.classList.remove('drag-over');
-      }
+      if (!isAdmin) return;
+      const folder = e.target.closest('.tree-folder-header');
+      if (folder) folder.classList.remove('drag-over');
+      if (e.target === ft || e.target.classList.contains('tree-empty')) ft.classList.remove('drag-over');
     });
+
     ft.addEventListener('drop', async e => {
+      if (!isAdmin) return;
       e.preventDefault();
+      e.stopPropagation();
+      
+      const folder = e.target.closest('.tree-folder-header');
+      if (folder) folder.classList.remove('drag-over');
       ft.classList.remove('drag-over');
-      if (e.target === ft || e.target.classList.contains('tree-empty')) {
-        const itemPath = e.dataTransfer.getData('text/plain');
-        if (itemPath) await moveItem(itemPath, '');
+      
+      const sourcePath = e.dataTransfer.getData('text/plain');
+      if (!sourcePath) return;
+      
+      let targetPath = '';
+      if (folder) {
+        targetPath = folder.dataset.path;
+      } else if (e.target === ft || e.target.classList.contains('tree-empty')) {
+        targetPath = '';
+      } else {
+        return; // Dropped on something invalid
       }
+      
+      // Prevent dropping into itself or its own subfolder
+      if (targetPath === sourcePath || targetPath.startsWith(sourcePath + '/')) return;
+      
+      await moveItem(sourcePath, targetPath);
     });
-  }
-
-  function handleDragStart(e) {
-    const el = e.target.closest('.tree-note') || e.target.closest('.tree-folder-header');
-    if (!el) return;
-    const path = el.dataset.path;
-    if (path) {
-      e.dataTransfer.setData('text/plain', path);
-      e.dataTransfer.effectAllowed = 'move';
-    }
-  }
-
-  function handleDragOver(e) {
-    e.preventDefault();
-    e.dataTransfer.dropEffect = 'move';
-    const folder = e.target.closest('.tree-folder-header');
-    if (folder) folder.classList.add('drag-over');
-  }
-
-  function handleDragLeave(e) {
-    const folder = e.target.closest('.tree-folder-header');
-    if (folder) folder.classList.remove('drag-over');
-  }
-
-  async function handleDrop(e) {
-    e.preventDefault();
-    e.stopPropagation();
-    const folder = e.target.closest('.tree-folder-header');
-    if (folder) folder.classList.remove('drag-over');
-    const sourcePath = e.dataTransfer.getData('text/plain');
-    if (!sourcePath) return;
-    
-    const targetPath = folder ? folder.dataset.path : '';
-    // Prevent dragging into itself or its own children
-    if (targetPath === sourcePath || targetPath.startsWith(sourcePath + '/')) return;
-    
-    await moveItem(sourcePath, targetPath);
   }
 
   async function moveItem(sourcePath, targetFolder) {
