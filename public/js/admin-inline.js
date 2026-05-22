@@ -114,6 +114,22 @@
       }
     });
 
+    // Patch fetch to avoid 404s when optimistically loading a recently moved note
+    const _origFetch = window.fetch;
+    window.fetch = async function(...args) {
+      const url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url);
+      if (url && url.startsWith('/api/note/')) {
+        const fetchPath = decodeURIComponent(url.replace('/api/note/', ''));
+        if (currentNote && currentNote.path === fetchPath && currentNote.content !== undefined) {
+          return new Response(JSON.stringify(currentNote), {
+            status: 200,
+            headers: { 'Content-Type': 'application/json' }
+          });
+        }
+      }
+      return _origFetch.apply(this, args);
+    };
+
     // Override visitor's openNote so admin gets editor state too
     const _origOpenNote = window.openNote;
     window.openNote = async function (notePath) {
@@ -524,6 +540,42 @@
   }
 
   /* ── CRUD Modals ────────────────────────────────────────────────────────── */
+  function closeModal() {
+    const overlay = document.getElementById('modalOverlay');
+    if (overlay) overlay.style.display = 'none';
+  }
+
+  async function showDeleteConfirmModal(path, type) {
+    showModal(`Delete ${type}?`, `Are you sure you want to delete <strong>${xss(path)}</strong>?`, 'Delete', async () => {
+      closeModal();
+      
+      // OPTIMISTIC UI: Instantly remove from tree
+      const el = document.querySelector(`[data-path="${path}"]`);
+      if (el) {
+        const actualNode = el.closest('.tree-note') || el.closest('.tree-folder');
+        if (actualNode) actualNode.remove();
+      }
+      
+      // If deleting the currently open note, close it
+      if (type === 'note' && currentNote && currentNote.path === (path.endsWith('.md') ? path : path + '.md')) {
+        currentNote = null;
+        if (typeof showWelcome === 'function') showWelcome();
+      }
+
+      try {
+        const res = await fetch(`/api/${type}/${path}`, {
+          method: 'DELETE',
+          headers: { 'Content-Type': 'application/json' },
+        });
+        if (!res.ok) throw new Error();
+        if (typeof loadTree === 'function') await loadTree();
+      } catch (e) {
+        if (typeof toast === 'function') toast('Delete failed', 'error');
+        if (typeof loadTree === 'function') loadTree();
+      }
+    }, true);
+  }
+
   function showNewNoteModal(inFolder) {
     const folderEls = document.querySelectorAll('.tree-folder-header');
     const folders = Array.from(folderEls).map(el => el.dataset.path).filter(Boolean);
@@ -587,12 +639,20 @@
       'Create', async () => {
         const name = document.getElementById('mFolderName')?.value.trim();
         if (!name) return;
+        
+        // OPTIMISTIC UI: Add placeholder to tree
+        const ft = document.getElementById('fileTree');
+        const folderNode = document.createElement('div');
+        folderNode.className = 'tree-folder';
+        folderNode.innerHTML = `<div class="tree-folder-header" data-path="${xss(name)}"><span>${xss(name.split('/').pop())}</span></div>`;
+        ft.appendChild(folderNode);
+
         const res = await fetch('/api/folder', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ path: name }),
         });
-        if (!res.ok) { toast('Failed to create folder', 'error'); return; }
+        if (!res.ok) { folderNode.remove(); toast('Failed to create folder', 'error'); return; }
         toast('Folder created!', 'success');
         if (typeof loadTree === 'function') loadTree();
       }
@@ -635,11 +695,16 @@
       }</p>`,
       'Delete', async () => {
         const isNote = type === 'note';
+        
+        // OPTIMISTIC UI: Remove from tree
+        const el = document.querySelector(`[data-path="${itemPath}"]`);
+        if (el) el.closest(isNote ? '.tree-note' : '.tree-folder')?.remove();
+        
         const url = isNote
           ? '/api/note/' + (itemPath.endsWith('.md') ? itemPath : itemPath + '.md')
           : '/api/folder/' + itemPath;
         const res = await fetch(url, { method: 'DELETE' });
-        if (!res.ok) { toast('Delete failed', 'error'); return; }
+        if (!res.ok) { toast('Delete failed', 'error'); if (typeof loadTree === 'function') loadTree(); return; }
         toast('Deleted', 'info');
         // If we deleted the currently open note, exit edit mode and show welcome
         if (isNote && currentNote?.path === (itemPath.endsWith('.md') ? itemPath : itemPath + '.md')) {
@@ -715,8 +780,9 @@
       if (folder) folder.classList.remove('drag-over');
       ft.classList.remove('drag-over');
       
-      const sourcePath = e.dataTransfer.getData('text/plain');
+      let sourcePath = e.dataTransfer.getData('text/plain');
       if (!sourcePath) return;
+      try { sourcePath = decodeURIComponent(sourcePath); } catch (err) {}
       
       let targetPath = null;
       const noteEl = e.target.closest('.tree-note');
@@ -753,7 +819,7 @@
     if (sourcePath === destPath) return; // Didn't move
     
     // OPTIMISTIC UI: Instantly visually move the item
-    const el = document.querySelector(`[data-path="${sourcePath}"]`);
+    const el = document.querySelector(`[data-path="${sourcePath.replace(/"/g, '\\"')}"]`);
     let type = 'note';
     if (el) {
       type = el.classList.contains('tree-folder-header') ? 'folder' : 'note';
@@ -761,13 +827,33 @@
       if (actualNode) {
         const targetChildren = targetFolder === '' 
            ? document.getElementById('fileTree')
-           : document.querySelector(`[data-path="${targetFolder}"]`)?.nextElementSibling;
+           : document.querySelector(`[data-path="${targetFolder.replace(/"/g, '\\"')}"]`)?.nextElementSibling;
            
         if (targetChildren && (targetChildren.classList.contains('tree-folder-children') || targetChildren.id === 'fileTree')) {
           targetChildren.appendChild(actualNode);
           el.dataset.path = destPath; // Prevent double-triggering
+          
+          // If folder, cascade update all children's data-path attributes
+          if (type === 'folder') {
+            const prefix = sourcePath + '/';
+            const newPrefix = destPath + '/';
+            actualNode.querySelectorAll('[data-path]').forEach(childEl => {
+              if (childEl.dataset.path && childEl.dataset.path.startsWith(prefix)) {
+                childEl.dataset.path = childEl.dataset.path.replace(prefix, newPrefix);
+              }
+            });
+          }
         }
       }
+    }
+    
+    // OPTIMISTIC UI: Update currentNote if it was the one moved
+    if (type === 'note' && currentNote && currentNote.path === (sourcePath.endsWith('.md') ? sourcePath : sourcePath + '.md')) {
+      const newNp = destPath.endsWith('.md') ? destPath : destPath + '.md';
+      currentNote.path = newNp;
+      if (typeof currentPath !== 'undefined') currentPath = newNp;
+      const urlPath = '/note/' + newNp.replace(/\.md$/, '');
+      window.history.pushState({}, '', urlPath);
     }
     
     try {
@@ -780,8 +866,7 @@
         if (typeof toast === 'function') toast('Move failed', 'error');
         return;
       }
-      if (typeof toast === 'function') toast('Moved successfully', 'success');
-      // No need to loadTree manually since SSE will trigger it
+      // Success, SSE handles tree update
     } catch (e) {
       if (typeof toast === 'function') toast('Move failed', 'error');
     }
