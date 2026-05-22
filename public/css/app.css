@@ -495,52 +495,71 @@
   list-style: none;
   padding: 0;
   margin: 0;
+  position: relative;
 }
 
 .outline-item {
-  margin-bottom: .4rem;
+  position: relative;
+  margin-bottom: 2px;
 }
 
 .outline-link {
   color: var(--text-muted);
   font-size: .82rem;
   text-decoration: none;
-  transition: color .12s;
-  display: block;
+  transition: color .12s, background .12s;
+  display: flex;
+  align-items: center;
   overflow: hidden;
   text-overflow: ellipsis;
   white-space: nowrap;
+  padding: 4px 6px;
+  border-radius: var(--radius-sm);
+  position: relative;
 }
 
 .outline-link:hover {
   color: var(--text-normal);
+  background: var(--bg-hover);
 }
 
 .outline-link.active {
   color: var(--accent);
   font-weight: 600;
+  background: var(--bg-active);
 }
 
-.outline-level-1 {
-  padding-left: 0;
-  font-weight: 600;
-  color: var(--text-normal);
-  margin-top: .6rem;
+/* Vertical guide lines for hierarchy */
+.outline-list::before {
+  content: '';
+  position: absolute;
+  top: 0;
+  bottom: 0;
+  left: 10px;
+  width: 1px;
+  background: var(--border);
+  z-index: 0;
 }
+.outline-level-1 { font-weight: 600; color: var(--text-normal); margin-top: .4rem; padding-left: 6px; }
+.outline-level-2 { padding-left: 20px; }
+.outline-level-3 { padding-left: 32px; font-size: .78rem; }
+.outline-level-4 { padding-left: 44px; font-size: .75rem; }
+.outline-level-5 { padding-left: 56px; font-size: .72rem; }
+.outline-level-6 { padding-left: 68px; font-size: .7rem; }
 
-.outline-level-2 {
-  padding-left: .6rem;
+/* Sub-guide lines */
+.outline-level-2::before, .outline-level-3::before, .outline-level-4::before, .outline-level-5::before, .outline-level-6::before {
+  content: '';
+  position: absolute;
+  left: 10px;
+  top: 50%;
+  width: 6px;
+  height: 1px;
+  background: var(--border);
+  z-index: 0;
 }
-
-.outline-level-3 {
-  padding-left: 1.2rem;
-  font-size: .78rem;
-}
-
-.outline-level-4 {
-  padding-left: 1.8rem;
-  font-size: .75rem;
-}
+.outline-level-3::after { content: ''; position: absolute; left: 22px; top: -10px; bottom: 50%; width: 1px; background: var(--border); z-index: 0; }
+.outline-level-4::after { content: ''; position: absolute; left: 34px; top: -10px; bottom: 50%; width: 1px; background: var(--border); z-index: 0; }
 
 /* ─── Welcome ─────────────────────────────────────────────────────────────── */
 .welcome {

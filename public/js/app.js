@@ -1,0 +1,1215 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   admin.js — Admin dashboard logic (ES module)
+───────────────────────────────────────────────────────────────────────────── */
+
+import { createEditor, applyToolbarAction, getContent, setContent, EditorView } from './editor.js';
+
+// ─── State ───────────────────────────────────────────────────────────────────
+let tree = [];
+let currentNote = null;   // { path, title, visibility, content }
+let editorView = null;
+let isDirty = false;
+let saveTimeout = null;
+let isDark = localStorage.getItem('theme') !== 'light';
+let isAdmin = false;
+let isPreviewMode = true;
+
+function updateAdminUI() {
+  const adminEls = document.querySelectorAll('.admin-only');
+  adminEls.forEach(el => el.classList.toggle('hidden', !isAdmin));
+  const adminLoginBtn = document.getElementById('adminLoginBtn');
+  if (adminLoginBtn) {
+    adminLoginBtn.style.display = isAdmin ? 'none' : 'flex';
+  }
+}
+
+// Multi-select and outline state tracking
+let selectedPaths = new Set();
+let lastClickedPath = null;
+
+// ─── Mobile Sidebar Auto-Close ───────────────────────────────────────────────
+function collapseSidebarsOnMobile() {
+  if (window.innerWidth <= 1024) {
+    document.getElementById('sidebar')?.classList.add('collapsed');
+    document.getElementById('outlinePane')?.classList.add('collapsed');
+  }
+}
+
+// ─── Boot ────────────────────────────────────────────────────────────────────
+document.addEventListener('DOMContentLoaded', async () => {
+  // Auth check
+  const auth = await fetch('/api/auth').then(r => r.json());
+  isAdmin = auth.admin;
+  updateAdminUI();
+  if (window.lucide) window.lucide.createIcons();
+  
+  // Collapse sidebars on tablet/mobile by default (≤1024px)
+  if (window.innerWidth <= 1024) {
+    document.getElementById('sidebar')?.classList.add('collapsed');
+    document.getElementById('outlinePane')?.classList.add('collapsed');
+  }
+
+  applyTheme();
+  initModals();
+  initEditor();
+  
+
+  await loadTree();
+  bindUI();
+
+  // Fast boot: automatically create and open a blank note if no note is active
+  if (!currentNote) {
+    await createAndOpenUntitled();
+  }
+});
+
+// ─── Theme ───────────────────────────────────────────────────────────────────
+function applyTheme() {
+  document.body.classList.toggle('theme-dark', isDark);
+  document.body.classList.toggle('theme-light', !isDark);
+  const btn = document.getElementById('toggleTheme');
+  if (btn) {
+    btn.innerHTML = `<i data-lucide="${isDark ? 'moon' : 'sun'}"></i>`;
+    if (window.lucide) window.lucide.createIcons({ root: btn });
+  }
+  updateKbdHint();
+}
+
+function updateKbdHint() {
+  const hint = document.getElementById('kbdHint');
+  if (!hint) return;
+  const isMac = navigator.platform.toUpperCase().indexOf('MAC') >= 0;
+  hint.innerHTML = `<kbd>${isMac ? '⌘' : 'Ctrl'}K</kbd>`;
+}
+
+// ─── Tree ────────────────────────────────────────────────────────────────────
+async function loadTree() {
+  const res = await fetch('/api/tree');
+  tree = await res.json();
+  renderTree();
+}
+
+function renderTree() {
+  const ft = document.getElementById('fileTree');
+  const q = document.getElementById('searchInput').value.toLowerCase();
+  const nodes = q ? filterNodes(tree, q) : tree;
+
+  if (!nodes.length) {
+    ft.innerHTML = '<div class="tree-empty"><div style="display:flex;justify-content:center;margin-bottom:.5rem;color:var(--text-faint)"><i data-lucide="file-plus-2" style="width:32px;height:32px;"></i></div>No notes yet.<br>Click new note to create one.</div>';
+    if (window.lucide) window.lucide.createIcons();
+    return;
+  }
+  ft.innerHTML = '';
+  nodes.forEach(n => ft.appendChild(buildNode(n)));
+  if (window.lucide) window.lucide.createIcons({ root: ft });
+}
+
+// ─── Drag and Drop Handling ────────────────────────────────────────────────
+async function handleDropMove(data, targetFolder) {
+  const { type, path: oldPath } = data;
+  if (type === 'folder' && (targetFolder === oldPath || targetFolder.startsWith(oldPath + '/'))) return;
+  const oldName = oldPath.split('/').pop();
+  const newPath = targetFolder ? `${targetFolder}/${oldName}` : oldName;
+  if (oldPath === newPath) return;
+
+  try {
+    const res = await fetch('/api/rename', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ oldPath, newPath, type })
+    });
+    const msg = await res.json();
+    if (!res.ok) throw new Error(msg.error || 'Failed to move');
+    
+    toast('Moved successfully', 'success');
+    loadTree();
+    
+    if (type === 'note' && currentNote && currentNote.path === (oldPath.endsWith('.md') ? oldPath : oldPath + '.md')) {
+      const newNp = newPath.endsWith('.md') ? newPath : newPath + '.md';
+      currentNote.path = newNp;
+      document.getElementById('noteTitleInput').dataset.originalPath = newNp;
+    }
+  } catch (err) {
+    toast(err.message || 'Failed to move', 'error');
+  }
+}
+
+// Setup root tree drop zone
+document.addEventListener('DOMContentLoaded', () => {
+  const ft = document.getElementById('fileTree');
+  if (!ft) return;
+  ft.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    ft.classList.add('drag-over');
+  });
+  ft.addEventListener('dragleave', e => ft.classList.remove('drag-over'));
+  ft.addEventListener('drop', async e => {
+    e.preventDefault();
+    ft.classList.remove('drag-over');
+    if (e.target.closest('.tree-folder-header')) return; // handled by folder
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+      handleDropMove(data, ''); // empty target folder = root
+    } catch(err) {
+      console.error('FileTree drop error:', err);
+    }
+  });
+});
+
+function toggleSelection(path, element, isMulti, isRange) {
+  if (!isMulti && !isRange) {
+    // Clear all other selections
+    document.querySelectorAll('.tree-note, .tree-folder-header').forEach(el => el.classList.remove('selected'));
+    selectedPaths.clear();
+  }
+
+  if (isRange && lastClickedPath) {
+    const allItems = Array.from(document.querySelectorAll('.tree-note, .tree-folder-header'));
+    let startIdx = allItems.findIndex(el => el.dataset.path === lastClickedPath || el.parentElement.dataset.path === lastClickedPath);
+    let endIdx = allItems.findIndex(el => el.dataset.path === path || el.parentElement.dataset.path === path);
+    if (startIdx !== -1 && endIdx !== -1) {
+      const min = Math.min(startIdx, endIdx);
+      const max = Math.max(startIdx, endIdx);
+      for (let i = min; i <= max; i++) {
+        const itemEl = allItems[i];
+        const itemPath = itemEl.dataset.path || itemEl.parentElement.dataset.path;
+        if (itemPath) {
+          selectedPaths.add(itemPath);
+          itemEl.classList.add('selected');
+        }
+      }
+    }
+  } else {
+    if (selectedPaths.has(path)) {
+      selectedPaths.delete(path);
+      element.classList.remove('selected');
+    } else {
+      selectedPaths.add(path);
+      element.classList.add('selected');
+    }
+  }
+
+  lastClickedPath = path;
+}
+
+// Global keydown for deleting selected items
+document.addEventListener('keydown', async e => {
+  if (
+    document.activeElement.tagName === 'INPUT' ||
+    document.activeElement.tagName === 'TEXTAREA' ||
+    document.activeElement.closest('.cm-editor')
+  ) {
+    return;
+  }
+
+  if (e.key === 'Delete' || (e.shiftKey && e.key === 'Backspace')) {
+    if (selectedPaths.size > 0) {
+      e.preventDefault();
+      const count = selectedPaths.size;
+      const msg = `Are you sure you want to delete the ${count} selected item(s)?`;
+      showModal(
+        'Delete Selected Items',
+        `<p style="color:var(--text-normal)">${msg}</p>`,
+        'Delete All',
+        async () => {
+          for (const itemPath of selectedPaths) {
+            const isNote = itemPath.endsWith('.md');
+            const url = isNote ? '/api/note/' + itemPath : '/api/folder/' + itemPath;
+            await fetch(url, { method: 'DELETE' });
+          }
+          selectedPaths.clear();
+          toast(`Deleted ${count} item(s)`, 'success');
+          await loadTree();
+          showWelcome();
+        }
+      );
+      const confirmBtn = document.getElementById('modalConfirm');
+      if (confirmBtn) {
+        confirmBtn.style.background = 'var(--primary-red)';
+        confirmBtn.style.borderColor = 'var(--primary-red)';
+      }
+    }
+  }
+});
+
+function buildNode(node) {
+  return node.type === 'folder' ? buildFolder(node) : buildNoteItem(node);
+}
+
+function buildFolder(folder) {
+  const el = document.createElement('div');
+  el.className = 'tree-folder';
+  el.dataset.path = folder.path;
+  el.dataset.type = 'folder';
+
+  const header = document.createElement('div');
+  header.className = 'tree-folder-header';
+  header.innerHTML = `
+    <span class="folder-chevron open"><i data-lucide="chevron-right" style="width:12px;height:12px;"></i></span>
+    <span class="folder-icon"><i data-lucide="folder" style="width:14px;height:14px;"></i></span>
+    <span class="folder-name">${esc(folder.name)}</span>
+    <div class="tree-item-actions">
+      <button class="btn-icon" data-action="newNote" data-folder="${esc(folder.path)}" title="New note here" style="font-size:.75rem"><i data-lucide="file-plus"></i></button>
+    </div>
+  `;
+
+  const children = document.createElement('div');
+  children.className = 'tree-folder-children';
+  (folder.children || []).forEach(c => children.appendChild(buildNode(c)));
+
+  header.querySelector('[data-action="newNote"]').addEventListener('click', e => {
+    e.stopPropagation();
+    showNewNoteModal(folder.path);
+  });
+
+  header.addEventListener('click', e => {
+    if (e.target.closest('[data-action]')) return;
+    
+    const isMulti = e.ctrlKey || e.metaKey;
+    const isRange = e.shiftKey;
+    
+    toggleSelection(folder.path, header, isMulti, isRange);
+    
+    if (!isMulti && !isRange) {
+      const ch = header.querySelector('.folder-chevron');
+      const open = ch.classList.toggle('open');
+      children.style.display = open ? '' : 'none';
+      const iconSpan = header.querySelector('.folder-icon');
+      iconSpan.innerHTML = `<i data-lucide="${open ? 'folder-open' : 'folder'}" style="width:14px;height:14px;"></i>`;
+      if (window.lucide) window.lucide.createIcons({ root: iconSpan });
+    }
+  });
+
+  header.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    showCtxMenu(e, 'folder', folder.path, folder.name);
+  });
+
+  // Drag and drop for folders
+  header.draggable = true;
+  header.addEventListener('dragstart', e => {
+    e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'folder', path: folder.path }));
+    e.dataTransfer.effectAllowed = 'move';
+    header.style.opacity = '0.5';
+  });
+  header.addEventListener('dragend', () => header.style.opacity = '1');
+  
+  header.addEventListener('dragover', e => {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    header.classList.add('drag-over');
+  });
+  header.addEventListener('dragleave', () => header.classList.remove('drag-over'));
+  header.addEventListener('drop', async e => {
+    e.preventDefault();
+    e.stopPropagation(); // prevent root from firing
+    header.classList.remove('drag-over');
+    try {
+      const data = JSON.parse(e.dataTransfer.getData('text/plain'));
+      handleDropMove(data, folder.path);
+    } catch(err) {
+      console.error('Folder drop error:', err);
+    }
+  });
+
+  el.appendChild(header);
+  el.appendChild(children);
+  return el;
+}
+
+function buildNoteItem(note) {
+  const el = document.createElement('div');
+  el.className = 'tree-note';
+  el.dataset.path = note.path;
+  el.dataset.type = 'note';
+  if (currentNote?.path === note.path) el.classList.add('active');
+
+  el.innerHTML = `
+    <span class="note-icon"><i data-lucide="file-text" style="width:14px;height:14px;"></i></span>
+    <span class="note-title">${esc(note.title || note.name)}</span>
+    <span class="note-visibility ${note.visibility}" title="${note.visibility === 'public' ? 'Public' : 'Private'}">
+      <i data-lucide="${note.visibility === 'public' ? 'globe' : 'lock'}" style="width:12px;height:12px;"></i>
+    </span>
+    <div class="tree-item-actions">
+      <button class="btn-icon" data-action="delete" title="Delete" style="font-size:.7rem;color:var(--primary-red)"><i data-lucide="trash-2"></i></button>
+    </div>
+  `;
+
+  el.addEventListener('click', e => {
+    if (e.target.closest('[data-action]')) return;
+    
+    const isMulti = e.ctrlKey || e.metaKey;
+    const isRange = e.shiftKey;
+    
+    toggleSelection(note.path, el, isMulti, isRange);
+    
+    if (!isMulti && !isRange) {
+      openNote(note.path);
+    }
+  });
+
+  el.addEventListener('contextmenu', e => {
+    e.preventDefault();
+    showCtxMenu(e, 'note', note.path, note.title || note.name, note.visibility);
+  });
+
+  el.querySelector('[data-action="delete"]').addEventListener('click', e => {
+    e.stopPropagation();
+    confirmDelete('note', note.path, note.title || note.name);
+  });
+
+  // Drag and drop for notes
+  el.draggable = true;
+  el.addEventListener('dragstart', e => {
+    e.dataTransfer.setData('text/plain', JSON.stringify({ type: 'note', path: note.path }));
+    e.dataTransfer.effectAllowed = 'move';
+    el.style.opacity = '0.5';
+  });
+  el.addEventListener('dragend', () => el.style.opacity = '1');
+
+  return el;
+}
+
+// ─── Open Note ───────────────────────────────────────────────────────────────
+async function openNote(notePath) {
+  if (isDirty) {
+    const ok = confirm('You have unsaved changes. Discard them?');
+    if (!ok) return;
+  }
+
+  const np = notePath.endsWith('.md') ? notePath : notePath + '.md';
+
+  // Auto-cleanup previous empty Untitled note before loading next
+  if (currentNote && currentNote.path !== np) {
+    const prevContent = editorView ? editorView.state.doc.toString().trim() : '';
+    if (currentNote.title.startsWith('Untitled') && !prevContent) {
+      const oldPath = currentNote.path;
+      fetch('/api/note/' + oldPath, { method: 'DELETE' }).then(() => {
+        loadTree();
+      });
+    }
+  }
+
+  // Mark active
+  document.querySelectorAll('.tree-note').forEach(el => {
+    el.classList.toggle('active', el.dataset.path === np);
+  });
+
+  try {
+    const res = await fetch('/api/note/' + np);
+    if (!res.ok) throw new Error('Failed to load');
+    const note = await res.json();
+
+    currentNote = note;
+    isDirty = false;
+
+    showEditor();
+    document.getElementById('noteTitleInput').value = note.title || '';
+    updateVisibilityUI(note.visibility);
+    document.getElementById('saveStatus').textContent = 'All saved';
+    document.getElementById('saveStatus').className = 'save-status';
+
+    // Init or reset editor
+    const wrap = document.getElementById('editorCmWrap');
+    if (editorView) {
+      setContent(editorView, note.content);
+    } else {
+      editorView = createEditor(wrap, note.content, handleEditorEvent);
+    }
+    
+    renderPreview(note.content, note.title || '');
+    updateOutline(note.content);
+    updateWordCount(note.content);
+    collapseSidebarsOnMobile();
+    
+    const newUrl = '/note/' + notePath.replace(/\.md$/, '');
+    if (window.location.pathname !== newUrl) {
+      history.pushState({ path: notePath }, '', newUrl);
+    }
+  } catch (err) {
+    toast('Failed to open note', 'error');
+  }
+}
+
+function renderPreview(markdownStr, titleText) {
+  const readerWrap = document.getElementById('readerWrap');
+  if (!readerWrap) return;
+  const html = marked.parse(markdownStr || '');
+  readerWrap.innerHTML = `
+    <div class="note-header">
+      <h1 class="note-title-display">${esc(titleText)}</h1>
+      ${currentNote ? `
+      <div class="note-meta">
+        <div class="note-meta-item">
+          <i data-lucide="${currentNote.visibility === 'public' ? 'globe' : 'lock'}"></i>
+          ${currentNote.visibility === 'public' ? 'Public' : 'Private'}
+        </div>
+      </div>
+      ` : ''}
+    </div>
+    <div class="note-body">${html}</div>
+  `;
+  lucide.createIcons();
+}
+
+async function createAndOpenUntitled() {
+  let base = 'Untitled';
+  let count = 0;
+  let name = base;
+  
+  const exists = (nodes, path) => {
+    for (const n of nodes) {
+      if (n.path === path || n.path === path + '.md') return true;
+      if (n.children && exists(n.children, path)) return true;
+    }
+    return false;
+  };
+  
+  while (exists(tree, name)) {
+    count++;
+    name = `${base} ${count}`;
+  }
+
+  const res = await fetch('/api/note', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ path: name, title: name, visibility: 'private', content: '' }),
+  });
+  if (res.ok) {
+    await loadTree();
+    await openNote(name + '.md');
+    setTimeout(() => {
+      if (editorView) editorView.focus();
+    }, 150);
+  }
+}
+
+// Keepalive background cleanup on page unload/close
+window.addEventListener('pagehide', () => {
+  if (currentNote && currentNote.title.startsWith('Untitled')) {
+    const prevContent = editorView ? editorView.state.doc.toString().trim() : '';
+    if (!prevContent) {
+      fetch('/api/note/' + currentNote.path, { method: 'DELETE', keepalive: true });
+    }
+  }
+});
+
+function handleEditorEvent(type) {
+  if (type === 'save') { saveNote(); return; }
+  if (type === 'change') {
+    isDirty = true;
+    document.getElementById('saveStatus').textContent = 'Unsaved changes';
+    document.getElementById('saveStatus').className = 'save-status';
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(() => saveNote(), 3000); // auto-save after 3s
+    
+    updateOutline(getContent(editorView));
+    updateWordCount(getContent(editorView));
+  }
+}
+
+function updateWordCount(content) {
+  const wordCountEl = document.getElementById('wordCount');
+  if (!wordCountEl) return;
+  
+  const words = content ? content.split(/\s+/).filter(w => w.length > 0).length : 0;
+  const chars = content ? content.length : 0;
+  wordCountEl.textContent = `${words} words · ${chars} chars`;
+}
+
+function showEditor() {
+  document.getElementById('welcomePane').classList.add('hidden');
+  if (isPreviewMode) {
+    document.getElementById('editorPane').classList.add('hidden');
+    document.getElementById('readerWrap').classList.remove('hidden');
+  } else {
+    document.getElementById('readerWrap').classList.add('hidden');
+    document.getElementById('editorPane').classList.remove('hidden');
+  }
+}
+
+function showWelcome() {
+  document.getElementById('welcomePane').style.display = '';
+  document.getElementById('editorPane').classList.add('hidden');
+  document.getElementById('readerWrap').classList.add('hidden');
+  currentNote = null;
+  isDirty = false;
+  const outlinePane = document.getElementById('outlinePane');
+  if (outlinePane) outlinePane.classList.add('hidden');
+}
+
+// ─── Outline ──────────────────────────────────────────────────────────────────
+function updateOutline(md) {
+  const outlinePane = document.getElementById('outlinePane');
+  const outlineList = document.getElementById('outlineList');
+  if (!outlinePane || !outlineList) return;
+
+  const headings = [];
+  const regex = /^(#{1,6})\s+(.+)$/gm;
+  let match;
+  while ((match = regex.exec(md)) !== null) {
+    const cleanText = match[2].replace(/\[([^\]]+)\]\([^)]+\)/g, '$1').replace(/[*_~`]/g, '');
+    headings.push({ level: match[1].length, text: cleanText, line: md.substring(0, match.index).split('\n').length });
+  }
+
+  if (headings.length === 0) {
+    outlinePane.classList.add('hidden');
+    return;
+  }
+
+  outlinePane.classList.remove('hidden');
+  outlineList.innerHTML = '';
+  headings.forEach(h => {
+    const li = document.createElement('li');
+    li.className = 'outline-item';
+    const a = document.createElement('a');
+    a.className = `outline-link outline-level-${h.level}`;
+    a.href = '#';
+    a.textContent = h.text;
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      // Scroll CodeMirror to line
+      if (editorView) {
+        const lineInfo = editorView.state.doc.line(h.line);
+        editorView.dispatch({ effects: EditorView.scrollIntoView(lineInfo.from, { y: 'start' }) });
+      }
+      collapseSidebarsOnMobile();
+    });
+    li.appendChild(a);
+    outlineList.appendChild(li);
+  });
+}
+
+function updateOutlineFromDOM(container) {
+  const outlinePane = document.getElementById('outlinePane');
+  const outlineList = document.getElementById('outlineList');
+  if (!outlinePane || !outlineList) return;
+
+  const headings = Array.from(container.querySelectorAll('h1, h2, h3, h4, h5, h6'));
+
+  if (headings.length === 0) {
+    outlinePane.classList.add('hidden');
+    return;
+  }
+
+  outlinePane.classList.remove('hidden');
+  outlineList.innerHTML = '';
+  headings.forEach(h => {
+    const level = parseInt(h.tagName.substring(1));
+    const li = document.createElement('li');
+    li.className = 'outline-item';
+    const a = document.createElement('a');
+    a.className = `outline-link outline-level-${level}`;
+    a.href = `#${h.id}`;
+    a.textContent = h.textContent;
+    
+    a.addEventListener('click', e => {
+      e.preventDefault();
+      h.scrollIntoView({ behavior: 'smooth' });
+      document.querySelectorAll('.outline-link').forEach(l => l.classList.remove('active'));
+      a.classList.add('active');
+      collapseSidebarsOnMobile();
+    });
+
+    li.appendChild(a);
+    outlineList.appendChild(li);
+  });
+}
+
+// ─── Save ─────────────────────────────────────────────────────────────────────
+async function saveNote() {
+  if (!currentNote) return;
+  clearTimeout(saveTimeout);
+
+  const status = document.getElementById('saveStatus');
+  status.textContent = 'Saving…';
+  status.className = 'save-status saving';
+
+  const content  = getContent(editorView);
+  const title    = document.getElementById('noteTitleInput').value.trim() || currentNote.path.replace(/\.md$/, '').split('/').pop();
+  const visibility = currentNote.visibility;
+
+  try {
+    const res = await fetch('/api/note/' + currentNote.path, {
+      method: 'PUT',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ content, title, visibility }),
+    });
+    if (!res.ok) throw new Error();
+
+    currentNote.content  = content;
+    currentNote.title    = title;
+    isDirty = false;
+    
+    const now = new Date();
+    const timeStr = now.toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+    status.textContent = `✓ Saved at ${timeStr}`;
+    status.className = 'save-status saved';
+
+    // Refresh tree label
+    await loadTree();
+    setTimeout(() => {
+      if (!isDirty) { status.textContent = 'All saved'; status.className = 'save-status'; }
+    }, 2000);
+  } catch {
+    status.textContent = '⚠ Save failed';
+    toast('Failed to save note', 'error');
+  }
+}
+
+// ─── Visibility ───────────────────────────────────────────────────────────────
+function updateVisibilityUI(vis) {
+  const btn = document.getElementById('visibilityToggle');
+  const icon = document.getElementById('visIcon');
+  const label = document.getElementById('visLabel');
+  if (vis === 'public') {
+    btn.className = 'visibility-toggle public';
+    icon.innerHTML = '<i data-lucide="globe" style="width:14px;height:14px;"></i>';
+    label.textContent = 'Public';
+  } else {
+    btn.className = 'visibility-toggle private';
+    icon.innerHTML = '<i data-lucide="lock" style="width:14px;height:14px;"></i>';
+    label.textContent = 'Private';
+  }
+  if (window.lucide) window.lucide.createIcons({ root: icon });
+}
+
+// ─── Context Menu ─────────────────────────────────────────────────────────────
+function showCtxMenu(e, type, itemPath, name, visibility) {
+  closeCtxMenu();
+  const menu = document.getElementById('ctxMenu');
+  menu.innerHTML = '';
+
+  if (type === 'note') {
+    menu.appendChild(ctxItem('edit-2', 'Rename', () => showRenameModal(type, itemPath, name)));
+    menu.appendChild(ctxItem(visibility === 'public' ? 'lock' : 'globe',
+      visibility === 'public' ? 'Make Private' : 'Make Public',
+      () => toggleVisibility(itemPath, visibility)));
+    const sep = document.createElement('hr');
+    sep.className = 'ctx-sep';
+    menu.appendChild(sep);
+    menu.appendChild(ctxItem('trash-2', 'Delete', () => confirmDelete(type, itemPath, name), true));
+  } else {
+    menu.appendChild(ctxItem('file-plus', 'New Note Here', () => showNewNoteModal(itemPath)));
+    menu.appendChild(ctxItem('edit-2', 'Rename', () => showRenameModal(type, itemPath, name)));
+    const sep = document.createElement('hr');
+    sep.className = 'ctx-sep';
+    menu.appendChild(sep);
+    menu.appendChild(ctxItem('trash-2', 'Delete Folder', () => confirmDelete(type, itemPath, name), true));
+  }
+
+  menu.style.display = '';
+  menu.style.left = Math.min(e.clientX, window.innerWidth - 160) + 'px';
+  menu.style.top  = Math.min(e.clientY, window.innerHeight - menu.offsetHeight - 10) + 'px';
+
+  setTimeout(() => document.addEventListener('click', closeCtxMenu, { once: true }), 0);
+  if (window.lucide) window.lucide.createIcons({ root: menu });
+}
+
+function ctxItem(icon, label, action, danger = false) {
+  const el = document.createElement('div');
+  el.className = 'ctx-item' + (danger ? ' danger' : '');
+  el.innerHTML = `<span><i data-lucide="${icon}" style="width:14px;height:14px;"></i></span><span>${esc(label)}</span>`;
+  el.addEventListener('click', () => { closeCtxMenu(); action(); });
+  return el;
+}
+
+function closeCtxMenu() {
+  document.getElementById('ctxMenu').style.display = 'none';
+}
+
+// ─── Visibility Toggle ────────────────────────────────────────────────────────
+async function toggleVisibility(notePath, currentVis) {
+  const newVis = currentVis === 'public' ? 'private' : 'public';
+  await fetch('/api/note/' + notePath, {
+    method: 'PUT',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ visibility: newVis }),
+  });
+  if (currentNote?.path === notePath) {
+    currentNote.visibility = newVis;
+    updateVisibilityUI(newVis);
+  }
+  await loadTree();
+  toast(`Note is now ${newVis}`, 'success');
+}
+
+// ─── Modals ───────────────────────────────────────────────────────────────────
+function showModal(title, bodyHTML, confirmText, onConfirm) {
+  document.getElementById('modalTitle').textContent = title;
+  document.getElementById('modalBody').innerHTML = bodyHTML;
+  document.getElementById('modalConfirm').textContent = confirmText;
+  document.getElementById('modalOverlay').style.display = '';
+
+  const confirmBtn = document.getElementById('modalConfirm');
+  const newConfirm = confirmBtn.cloneNode(true);
+  confirmBtn.parentNode.replaceChild(newConfirm, confirmBtn);
+
+  const cancelBtn = document.getElementById('modalCancel');
+  const newCancel = cancelBtn.cloneNode(true);
+  cancelBtn.parentNode.replaceChild(newCancel, cancelBtn);
+
+  const cleanup = () => {
+    document.getElementById('modalOverlay').style.display = 'none';
+    document.removeEventListener('keydown', handleKeydown);
+  };
+
+  const submit = () => {
+    cleanup();
+    onConfirm();
+  };
+
+  newConfirm.addEventListener('click', submit);
+  newCancel.addEventListener('click', cleanup);
+
+  function handleKeydown(e) {
+    if (e.key === 'Enter') {
+      e.preventDefault();
+      submit();
+    } else if (e.key === 'Escape') {
+      cleanup();
+    }
+  }
+
+  document.addEventListener('keydown', handleKeydown);
+}
+
+function showNewNoteModal(inFolder = '') {
+  showModal('New Note',
+    `<div class="form-group">
+      <label>Folder</label>
+      <input type="text" id="mFolder" value="${esc(inFolder)}" placeholder="folder (optional)">
+    </div>
+    <div class="form-group">
+      <label>Note name</label>
+      <input type="text" id="mName" placeholder="my-note" autofocus>
+    </div>
+    <div class="form-group">
+      <label>Visibility</label>
+      <select id="mVis" style="width:100%;padding:.45rem .6rem;background:var(--bg-2);color:var(--tx-0);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font-ui)">
+        <option value="private">🔒 Private</option>
+        <option value="public">🌐 Public</option>
+      </select>
+    </div>`,
+    'Create',
+    async () => {
+      const folder = document.getElementById('mFolder').value.trim();
+      const name   = document.getElementById('mName').value.trim().replace(/\.md$/, '');
+      const vis    = document.getElementById('mVis').value;
+      if (!name) { toast('Please enter a note name', 'error'); return; }
+      const notePath = folder ? `${folder}/${name}` : name;
+      const res = await fetch('/api/note', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: notePath, title: name, visibility: vis }),
+      });
+      if (!res.ok) { toast('Failed to create note', 'error'); return; }
+      toast('Note created!', 'success');
+      await loadTree();
+      openNote(notePath + '.md');
+    }
+  );
+  setTimeout(() => document.getElementById('mName')?.focus(), 50);
+}
+
+function showNewFolderModal() {
+  showModal('New Folder',
+    `<div class="form-group">
+      <label>Folder name</label>
+      <input type="text" id="mFolderName" placeholder="my-folder" autofocus>
+    </div>`,
+    'Create',
+    async () => {
+      const name = document.getElementById('mFolderName').value.trim();
+      if (!name) return;
+      await fetch('/api/folder', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: name }),
+      });
+      toast('Folder created!', 'success');
+      await loadTree();
+    }
+  );
+  setTimeout(() => document.getElementById('mFolderName')?.focus(), 50);
+}
+
+function showRenameModal(type, itemPath, currentName) {
+  showModal(`Rename ${type === 'note' ? 'Note' : 'Folder'}`,
+    `<div class="form-group">
+      <label>New name</label>
+      <input type="text" id="mNewName" value="${esc(currentName)}" autofocus>
+    </div>`,
+    'Rename',
+    async () => {
+      const newName = document.getElementById('mNewName').value.trim();
+      if (!newName || newName === currentName) return;
+      const dir = itemPath.split('/').slice(0, -1).join('/');
+      const newPath = dir ? `${dir}/${newName}` : newName;
+      const res = await fetch('/api/rename', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldPath: itemPath, newPath, type }),
+      });
+      if (!res.ok) { toast('Rename failed', 'error'); return; }
+      if (currentNote?.path === itemPath + '.md') {
+        currentNote.path  = newPath + '.md';
+        currentNote.title = newName;
+      }
+      toast('Renamed!', 'success');
+      await loadTree();
+    }
+  );
+  setTimeout(() => {
+    const inp = document.getElementById('mNewName');
+    inp?.focus();
+    inp?.select();
+  }, 50);
+}
+
+function confirmDelete(type, itemPath, name) {
+  showModal(`Delete ${type === 'note' ? 'Note' : 'Folder'}`,
+    `<p style="color:var(--tx-2)">Are you sure you want to delete <strong>"${esc(name)}"</strong>?
+    ${type === 'folder' ? '<br><small style="color:var(--clr-red)">All notes inside will also be deleted.</small>' : ''}</p>`,
+    'Delete',
+    async () => {
+      const url = type === 'note'
+        ? '/api/note/' + (itemPath.endsWith('.md') ? itemPath : itemPath + '.md')
+        : '/api/folder/' + itemPath;
+      const res = await fetch(url, { method: 'DELETE' });
+      if (!res.ok) { toast('Delete failed', 'error'); return; }
+      if (currentNote?.path === itemPath || currentNote?.path === itemPath + '.md') showWelcome();
+      toast('Deleted', 'info');
+      await loadTree();
+    }
+  );
+  document.getElementById('modalConfirm').style.background = 'var(--clr-red)';
+  document.getElementById('modalConfirm').style.color = '#fff';
+}
+
+// ─── UI Bindings ──────────────────────────────────────────────────────────────
+function bindUI() {
+  // Sidebar toggle
+  document.getElementById('sidebarToggle')?.addEventListener('click', () => {
+    const sidebar = document.getElementById('sidebar');
+    sidebar.classList.toggle('collapsed');
+    sidebar.classList.remove('peeking');
+  });
+
+  document.getElementById('rightSidebarToggle')?.addEventListener('click', () => {
+    const outlinePane = document.getElementById('outlinePane');
+    outlinePane.classList.toggle('collapsed');
+    outlinePane.classList.remove('peeking');
+  });
+
+  initResizers();
+
+  // Mobile sidebar dismissal on content area click
+  document.getElementById('editorArea')?.addEventListener('click', (e) => {
+    if (window.innerWidth <= 640 && !e.target.closest('.topbar-toggle')) {
+      collapseSidebarsOnMobile();
+    }
+  });
+
+  // Desktop Hover-to-Open Sidebar Peek (Coordinate-based high sensitivity tracker)
+  document.addEventListener('mousemove', e => {
+    if (window.innerWidth <= 640) return; // Only on desktop
+    
+    // Left sidebar peek
+    const sidebar = document.getElementById('sidebar');
+    if (sidebar && sidebar.classList.contains('collapsed')) {
+      if (!sidebar.classList.contains('peeking')) {
+        if (e.clientX <= 80) {
+          sidebar.classList.add('peeking');
+        }
+      } else {
+        if (e.clientX > 300) {
+          sidebar.classList.remove('peeking');
+        }
+      }
+    }
+    
+    // Right sidebar peek
+    const outlinePane = document.getElementById('outlinePane');
+    if (outlinePane && !outlinePane.classList.contains('hidden') && outlinePane.classList.contains('collapsed')) {
+      if (!outlinePane.classList.contains('peeking')) {
+        if (window.innerWidth - e.clientX <= 80) {
+          outlinePane.classList.add('peeking');
+        }
+      } else {
+        if (window.innerWidth - e.clientX > 280) {
+          outlinePane.classList.remove('peeking');
+        }
+      }
+    }
+  });
+
+  // New note / folder
+  document.getElementById('newNoteBtn').addEventListener('click', () => showNewNoteModal());
+  document.getElementById('newFolderBtn')?.addEventListener('click', () => showNewFolderModal());
+  document.getElementById('welcomeNewNote')?.addEventListener('click', () => showNewNoteModal());
+  document.getElementById('welcomeNewFolder')?.addEventListener('click', () => showNewFolderModal());
+
+  // Save (Cmd-S also works)
+  document.getElementById('saveStatus')?.addEventListener('click', () => {
+    if (isDirty && isAdmin) saveNote();
+  });
+
+  // Edit/Preview Toggle
+  const previewToggleBtn = document.getElementById('previewToggleBtn');
+  if (previewToggleBtn) {
+    previewToggleBtn.addEventListener('click', () => {
+      isPreviewMode = !isPreviewMode;
+      const icon = previewToggleBtn.querySelector('i');
+      if (isPreviewMode) {
+        document.getElementById('editorPane').classList.add('hidden');
+        document.getElementById('readerWrap').classList.remove('hidden');
+        previewToggleBtn.title = 'Switch to Writing Mode';
+        if (icon) {
+          icon.setAttribute('data-lucide', 'edit-2');
+          lucide.createIcons();
+        }
+      } else {
+        document.getElementById('readerWrap').classList.add('hidden');
+        document.getElementById('editorPane').classList.remove('hidden');
+        previewToggleBtn.title = 'Switch to Reading Mode';
+        if (icon) {
+          icon.setAttribute('data-lucide', 'book-open');
+          lucide.createIcons();
+        }
+      }
+    });
+  }
+
+  // Fullscreen
+  const fsBtn = document.getElementById('fullscreenBtn');
+  if (fsBtn) {
+    fsBtn.addEventListener('click', () => {
+      if (!document.fullscreenElement) {
+        document.documentElement.requestFullscreen().catch(err => {
+          console.error(`Error enabling fullscreen: ${err.message}`);
+        });
+      } else {
+        document.exitFullscreen();
+      }
+    });
+  }
+
+  document.addEventListener('fullscreenchange', () => {
+    const fsBtn = document.getElementById('fullscreenBtn');
+    if (!fsBtn) return;
+    
+    const icon = fsBtn.querySelector('i');
+    if (document.fullscreenElement) {
+      document.body.classList.add('is-fullscreen');
+      document.getElementById('sidebar')?.classList.add('collapsed');
+      document.getElementById('outlinePane')?.classList.add('collapsed');
+      fsBtn.title = 'Exit fullscreen';
+      if (icon) {
+        icon.setAttribute('data-lucide', 'minimize');
+        lucide.createIcons();
+      }
+    } else {
+      document.body.classList.remove('is-fullscreen');
+      fsBtn.title = 'Toggle fullscreen';
+      if (icon) {
+        icon.setAttribute('data-lucide', 'maximize');
+        lucide.createIcons();
+      }
+    }
+  });
+
+  // Visibility toggle
+  document.getElementById('visibilityToggle').addEventListener('click', () => {
+    if (!currentNote) return;
+    const newVis = currentNote.visibility === 'public' ? 'private' : 'public';
+    currentNote.visibility = newVis;
+    updateVisibilityUI(newVis);
+    isDirty = true;
+    document.getElementById('saveStatus').textContent = 'Unsaved changes';
+  });
+
+  // Title input
+  document.getElementById('noteTitleInput').addEventListener('input', () => {
+    isDirty = true;
+    document.getElementById('saveStatus').textContent = 'Unsaved changes';
+  });
+
+  // Login UI
+  document.getElementById('adminLoginBtn')?.addEventListener('click', () => {
+    document.getElementById('loginModal').style.display = 'flex';
+    document.getElementById('loginPassword').focus();
+  });
+
+  document.getElementById('loginSubmitBtn')?.addEventListener('click', async () => {
+    const pw = document.getElementById('loginPassword').value;
+    const res = await fetch('/api/login', {
+      method: 'POST',
+      headers: {'Content-Type':'application/json'},
+      body: JSON.stringify({ password: pw })
+    });
+    if (res.ok) {
+      document.getElementById('loginModal').style.display = 'none';
+      isAdmin = true;
+      updateAdminUI();
+      toast('Logged in successfully', 'success');
+      loadTree(); // Reload tree to show private notes
+    } else {
+      document.getElementById('loginError').style.display = 'block';
+    }
+  });
+
+  document.getElementById('loginPassword')?.addEventListener('keyup', (e) => {
+    if (e.key === 'Enter') document.getElementById('loginSubmitBtn').click();
+  });
+
+  // Logout
+  document.getElementById('adminLogoutBtn')?.addEventListener('click', async () => {
+    await fetch('/api/logout', { method: 'POST' });
+    isAdmin = false;
+    updateAdminUI();
+    toast('Logged out', 'info');
+    loadTree();
+  });
+
+  // Theme
+  document.getElementById('toggleThemeTopbar')?.addEventListener('click', () => {
+  let st;
+  document.getElementById('searchInput').addEventListener('input', e => {
+    clearTimeout(st);
+    st = setTimeout(renderTree, 200);
+  });
+
+  // Modal cancel
+  document.getElementById('modalCancel').addEventListener('click', () => {
+    document.getElementById('modalOverlay').style.display = 'none';
+  });
+  document.getElementById('modalOverlay').addEventListener('click', e => {
+    if (e.target === document.getElementById('modalOverlay')) {
+      document.getElementById('modalOverlay').style.display = 'none';
+    }
+  });
+
+  // Close ctx menu on escape
+  document.addEventListener('keydown', e => {
+    if (e.key === 'Escape') closeCtxMenu();
+    // Keyboard shortcut for search
+    if ((e.metaKey || e.ctrlKey) && e.key === 'k') {
+      e.preventDefault();
+      document.getElementById('searchInput')?.focus();
+    }
+  });
+
+  // Warn on unload
+  window.addEventListener('beforeunload', e => {
+    if (isDirty) { e.preventDefault(); e.returnValue = ''; }
+  });
+}
+
+// ─── Search filter ────────────────────────────────────────────────────────────
+function filterNodes(nodes, q) {
+  const result = [];
+  for (const n of nodes) {
+    if (n.type === 'folder') {
+      const children = filterNodes(n.children || [], q);
+      if (children.length) result.push({ ...n, children });
+    } else {
+      if ((n.title || n.name).toLowerCase().includes(q)) result.push(n);
+    }
+  }
+  return result;
+}
+
+// ─── Toast ────────────────────────────────────────────────────────────────────
+function toast(msg, type = 'info') {
+  const wrap = document.getElementById('toastWrap');
+  const t = document.createElement('div');
+  t.className = `toast ${type}`;
+  t.textContent = msg;
+  wrap.appendChild(t);
+  setTimeout(() => t.remove(), 3000);
+}
+
+// ─── Escape ───────────────────────────────────────────────────────────────────
+function esc(str) {
+  return String(str).replace(/&/g,'&amp;').replace(/</g,'&lt;').replace(/>/g,'&gt;').replace(/"/g,'&quot;');
+}
+
+// ─── Resizers ─────────────────────────────────────────────────────────────────
+function initResizers() {
+  let isResizingLeft = false;
+  let isResizingRight = false;
+  const leftResizer = document.getElementById('leftResizer');
+  const rightResizer = document.getElementById('rightResizer');
+  const sidebar = document.getElementById('sidebar');
+  const outlinePane = document.getElementById('outlinePane');
+
+  if (leftResizer) {
+    leftResizer.addEventListener('mousedown', () => { isResizingLeft = true; document.body.style.cursor = 'col-resize'; leftResizer.classList.add('dragging'); });
+  }
+  if (rightResizer) {
+    rightResizer.addEventListener('mousedown', () => { isResizingRight = true; document.body.style.cursor = 'col-resize'; rightResizer.classList.add('dragging'); });
+  }
+
+  document.addEventListener('mousemove', e => {
+    if (!isResizingLeft && !isResizingRight) return;
+    e.preventDefault();
+    if (isResizingLeft) {
+      const newWidth = Math.max(200, Math.min(e.clientX, 500));
+      document.documentElement.style.setProperty('--sidebar-w', newWidth + 'px');
+    }
+    if (isResizingRight) {
+      const newWidth = Math.max(200, Math.min(window.innerWidth - e.clientX, 500));
+      outlinePane.style.width = newWidth + 'px';
+      outlinePane.style.minWidth = newWidth + 'px';
+    }
+  });
+
+  document.addEventListener('mouseup', () => {
+    isResizingLeft = false;
+    isResizingRight = false;
+    document.body.style.cursor = '';
+    leftResizer?.classList.remove('dragging');
+    rightResizer?.classList.remove('dragging');
+  });
+}
+
+// ─── Modals ───────────────────────────────────────────────────────────────────
+function initModals() {
+  const overlay = document.getElementById('modalOverlay');
+  const cancelBtn = document.getElementById('modalCancel');
+  
+  overlay?.addEventListener('click', (e) => {
+    if (e.target.id === 'modalOverlay') {
+      overlay.style.display = 'none';
+    }
+  });
+  
+  cancelBtn?.addEventListener('click', () => {
+    if (overlay) overlay.style.display = 'none';
+  });
+  
+  document.addEventListener('keydown', (e) => {
+    if (e.key === 'Escape') {
+      if (overlay) overlay.style.display = 'none';
+      if (typeof closeCtxMenu === 'function') closeCtxMenu();
+    }
+  });
+}
+
+// ─── Editor ───────────────────────────────────────────────────────────────────
+function initEditor() {
+  const cmWrap = document.getElementById('editorCmWrap');
+  if (!cmWrap) return;
+  
+  editorView = createEditor(cmWrap, '', (updateType) => {
+    if (updateType === 'change') {
+      isDirty = true;
+      document.getElementById('saveStatus').textContent = 'Unsaved changes';
+      document.getElementById('saveStatus').className = 'save-status';
+    } else if (updateType === 'save') {
+      if (isAdmin) saveNote();
+    }
+  });
+}
