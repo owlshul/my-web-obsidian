@@ -174,6 +174,25 @@ app.get('/api/tree', async (req, res) => {
   }
 });
 
+// ─── Server-Sent Events (SSE) ─────────────────────────────────────────────────
+let sseClients = [];
+app.get('/api/events', requireAdmin, (req, res) => {
+  res.setHeader('Content-Type', 'text/event-stream');
+  res.setHeader('Cache-Control', 'no-cache');
+  res.setHeader('Connection', 'keep-alive');
+  res.flushHeaders();
+  
+  sseClients.push(res);
+  
+  req.on('close', () => {
+    sseClients = sseClients.filter(c => c !== res);
+  });
+});
+
+function notifyTreeUpdate() {
+  sseClients.forEach(client => client.write('data: update\n\n'));
+}
+
 // ─── Note CRUD ────────────────────────────────────────────────────────────────
 app.get('/api/note/*', async (req, res) => {
   try {
@@ -236,6 +255,7 @@ app.post('/api/sync', async (req, res) => {
       });
     }
     
+    notifyTreeUpdate();
     res.json({ success: true, path: np });
   } catch (err) {
     console.error('Plugin sync error:', err);
@@ -259,6 +279,7 @@ app.post('/api/note', requireAdmin, async (req, res) => {
       visibility
     });
     
+    notifyTreeUpdate();
     res.json({ success: true, path: np });
   } catch (err) {
     console.error('Create note error:', err);
@@ -281,6 +302,7 @@ app.put('/api/note/*', requireAdmin, async (req, res) => {
     note.updated = new Date();
     
     await note.save();
+    notifyTreeUpdate();
     res.json({ success: true });
   } catch (err) {
     console.error('Update note error:', err);
@@ -296,6 +318,7 @@ app.delete('/api/note/*', requireAdmin, async (req, res) => {
     const result = await Note.deleteOne({ path: np });
     if (result.deletedCount === 0) return res.status(404).json({ error: 'Not found' });
     
+    notifyTreeUpdate();
     res.json({ success: true });
   } catch (err) {
     console.error('Delete note error:', err);
@@ -314,6 +337,7 @@ app.post('/api/folder', requireAdmin, async (req, res) => {
       { path: folderPath },
       { upsert: true }
     );
+    notifyTreeUpdate();
     res.json({ success: true });
   } catch (err) {
     console.error('Create folder error:', err);
@@ -337,6 +361,7 @@ app.delete('/api/folder/*', requireAdmin, async (req, res) => {
       path: { $regex: '^' + prefix.replace(/[.*+?^${}()|[\]\\]/g, '\\$&') }
     });
     
+    notifyTreeUpdate();
     res.json({ success: true });
   } catch (err) {
     console.error('Delete folder error:', err);
@@ -389,6 +414,7 @@ app.post('/api/rename', requireAdmin, async (req, res) => {
       }
     }
     
+    notifyTreeUpdate();
     res.json({ success: true });
   } catch (err) {
     console.error('Rename error:', err);

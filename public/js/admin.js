@@ -48,7 +48,7 @@ document.addEventListener('DOMContentLoaded', async () => {
     const prevWrap = document.getElementById('previewWrap');
     
     if (isPreviewMode) {
-      btn.innerHTML = '<i data-lucide="edit-2" style="width:14px;height:14px;"></i> Edit';
+      btn.innerHTML = '<i data-lucide="pen" style="width:14px;height:14px;"></i> Edit';
       
       // Fade out editor, then show preview
       cmWrap.style.opacity = '0';
@@ -80,7 +80,7 @@ document.addEventListener('DOMContentLoaded', async () => {
         updateOutlineFromDOM(prevWrap);
       }, 250);
     } else {
-      btn.innerHTML = '<i data-lucide="eye" style="width:14px;height:14px;"></i> Preview';
+      btn.innerHTML = '<i data-lucide="glasses" style="width:14px;height:14px;"></i> Preview';
       
       // Fade out preview, then show editor
       prevWrap.style.opacity = '0';
@@ -98,6 +98,14 @@ document.addEventListener('DOMContentLoaded', async () => {
   });
   await loadTree();
   bindUI();
+
+  // SSE listener for auto-refresh
+  const evtSource = new EventSource('/api/events');
+  evtSource.onmessage = (e) => {
+    if (e.data === 'update') {
+      loadTree();
+    }
+  };
 
   // Fast boot: automatically create and open a blank note if no note is active
   if (!currentNote) {
@@ -492,7 +500,8 @@ async function createAndOpenUntitled() {
     body: JSON.stringify({ path: name, title: name, visibility: 'private', content: '' }),
   });
   if (res.ok) {
-    await loadTree();
+    // Optimistic rendering
+    loadTree(); 
     await openNote(name + '.md');
     setTimeout(() => {
       if (editorView) editorView.focus();
@@ -549,7 +558,7 @@ function showWelcome() {
   document.getElementById('editorCmWrap').style.display = 'block';
   isPreviewMode = false;
   const btn = document.getElementById('previewToggleBtn');
-  if (btn) btn.innerHTML = '<i data-lucide="eye" style="width:14px;height:14px;"></i> Preview';
+  if (btn) btn.innerHTML = '<i data-lucide="glasses" style="width:14px;height:14px;"></i> Preview';
   if (window.lucide) window.lucide.createIcons();
 }
 
@@ -792,10 +801,25 @@ function showModal(title, bodyHTML, confirmText, onConfirm) {
 }
 
 function showNewNoteModal(inFolder = '') {
+  const getFolders = (nodes) => {
+    let f = [];
+    nodes.forEach(n => {
+      if (n.type === 'folder') { f.push(n.path); f.push(...getFolders(n.children || [])); }
+    });
+    return f;
+  };
+  const folders = getFolders(tree);
+  let folderOptions = '<option value="">(Root)</option>';
+  folders.forEach(f => {
+    folderOptions += `<option value="${esc(f)}" ${f === inFolder ? 'selected' : ''}>${esc(f)}</option>`;
+  });
+
   showModal('New Note',
     `<div class="form-group">
       <label>Folder</label>
-      <input type="text" id="mFolder" value="${esc(inFolder)}" placeholder="folder (optional)">
+      <select id="mFolder" style="width:100%;padding:.45rem .6rem;background:var(--bg-2);color:var(--tx-0);border:1px solid var(--border);border-radius:var(--radius-sm);font-family:var(--font-ui)">
+        ${folderOptions}
+      </select>
     </div>
     <div class="form-group">
       <label>Note name</label>
@@ -822,7 +846,7 @@ function showNewNoteModal(inFolder = '') {
       });
       if (!res.ok) { toast('Failed to create note', 'error'); return; }
       toast('Note created!', 'success');
-      await loadTree();
+      loadTree(); // optimistic non-blocking
       openNote(notePath + '.md');
     }
   );

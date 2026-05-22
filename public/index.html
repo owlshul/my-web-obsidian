@@ -26,7 +26,7 @@
         <span id="siteTitle">Notes</span>
       </a>
       <div class="sidebar-actions">
-        <!-- Kept the single theme toggle in the sidebar as requested (wait, the user said "remove the sidebar one". Ok, I will remove it from the sidebar and keep the topbar one). -->
+        <button class="btn-icon theme-toggle" id="toggleTheme" title="Toggle theme"><i data-lucide="sun"></i></button>
       </div>
     </div>
 
@@ -46,10 +46,13 @@
     </div>
 
     <div style="padding:.75rem;border-top:1px solid var(--border);font-size:.72rem;color:var(--text-faint);display:flex;align-items:center;justify-content:space-between">
-      <span>Public notes</span>
-      <button class="btn-link" id="adminLoginBtn" style="color:var(--text-faint);font-size:.7rem;display:flex;align-items:center;gap:4px;">
-        Admin <i data-lucide="lock" style="width:12px;height:12px;"></i>
-      </button>
+      <span id="sidebarFooterLabel">Public notes</span>
+      <!-- Admin sidebar actions (hidden until login) -->
+      <div id="sidebarAdminBtns" style="display:none;align-items:center;gap:2px;">
+        <button class="btn-icon" id="sidebarNewNoteBtn" title="New note" style="width:24px;height:24px;"><i data-lucide="file-plus" style="width:13px;height:13px;"></i></button>
+        <button class="btn-icon" id="sidebarNewFolderBtn" title="New folder" style="width:24px;height:24px;"><i data-lucide="folder-plus" style="width:13px;height:13px;"></i></button>
+      </div>
+      <button id="adminLoginBtn" style="background:none;border:none;cursor:pointer;color:var(--text-faint);font-size:.7rem;display:flex;align-items:center;gap:4px;padding:0;" title="Admin login">Admin <i data-lucide="lock" style="width:12px;height:12px;"></i></button>
     </div>
   </aside>
 
@@ -62,32 +65,68 @@
       <div class="breadcrumb" id="breadcrumb">
         <a href="/">Home</a>
       </div>
-      
-      <!-- Middle Space / Title Input (for admin) -->
-      <div class="topbar-middle admin-only hidden" style="flex:1; margin-left: 1rem; display: flex; align-items: center; gap: 0.5rem;">
-        <input type="text" id="noteTitleInput" class="note-title-input" placeholder="Note Title">
-        <span id="saveStatus" class="save-status">All saved</span>
-        <button id="visibilityToggle" class="visibility-toggle" title="Toggle Visibility">
-          <span id="visIcon"></span>
-          <span id="visLabel"></span>
-        </button>
-      </div>
+
 
       <div class="topbar-right">
         <button class="btn btn-ghost" id="exportPdfBtn" style="font-size:.75rem; padding:.2rem .5rem; height: 26px; display: none;" title="Export Note as clean PDF">
           <i data-lucide="file-down" style="width:14px;height:14px;"></i> PDF
         </button>
 
-        <div class="topbar-sep admin-only hidden"></div>
-        
-        <!-- Toggle Read/Write Mode -->
-        <button class="btn-icon admin-only hidden" id="previewToggleBtn" title="Toggle Read/Write mode">
-          <i data-lucide="edit-2"></i>
-        </button>
+        <!-- Admin edit mode toggle: only shown when logged in, distinct icon from highlighter -->
+        <div id="adminTopbarTools" style="display:none;align-items:center;gap:.25rem;">
+          <div class="topbar-sep"></div>
+          <button class="btn-icon" id="previewToggleBtn" title="Switch to Writing Mode"><i data-lucide="pen-line" style="width:15px;height:15px;"></i></button>
+        </div>
 
-        <!-- Tools removed in favor of live-preview -->
-        
         <div class="topbar-sep"></div>
+
+        <!-- Desktop Tools -->
+        <div class="desktop-tools">
+          <button class="btn-icon" id="toggleHighlighter" title="Toggle Auto-Highlight Mode">
+            <i data-lucide="highlighter"></i>
+          </button>
+          <div id="colorPalette" class="color-palette hidden">
+            <span class="color-btn yellow active" data-color="yellow" title="Yellow"></span>
+            <span class="color-btn green" data-color="green" title="Green"></span>
+            <span class="color-btn pink" data-color="pink" title="Pink"></span>
+            <span class="color-btn blue" data-color="blue" title="Blue"></span>
+          </div>
+          <button class="btn-icon" id="clearHighlightsBtn" title="Clear Highlights in this note">
+            <i data-lucide="eraser"></i>
+          </button>
+          <div class="topbar-sep"></div>
+          <div class="font-size-controls">
+            <button class="font-size-btn" id="fontSizeDec" title="Decrease text size">A−</button>
+            <button class="font-size-btn reset" id="fontSizeReset" title="Reset text size">A</button>
+            <button class="font-size-btn" id="fontSizeInc" title="Increase text size">A+</button>
+          </div>
+        </div>
+
+        <!-- Mobile Tools -->
+        <button popovertarget="mobileToolsPopover" class="btn-icon mobile-only" title="Tools">
+          <i data-lucide="pencil"></i>
+        </button>
+        <div id="mobileToolsPopover" popover="auto" class="mobile-tools-popover">
+          <div class="popover-row">
+            <button class="btn-icon popover-btn" id="popoverShowHighlights" title="Show Highlights">
+              <i data-lucide="panel-right-open"></i>
+              <span>Show Highlights</span>
+            </button>
+          </div>
+          <div class="popover-row">
+            <button class="btn-icon popover-btn" id="popoverClearHighlightsBtn" title="Clear Highlights">
+              <i data-lucide="eraser"></i>
+              <span>Clear Highlights</span>
+            </button>
+          </div>
+          <div class="popover-row font-size-row">
+            <button class="font-size-btn" id="popoverFontSizeDec">A−</button>
+            <button class="font-size-btn reset" id="popoverFontSizeReset">A</button>
+            <button class="font-size-btn" id="popoverFontSizeInc">A+</button>
+          </div>
+        </div>
+
+        <div class="topbar-sep desktop-sep"></div>
         <button class="btn-icon theme-toggle" id="toggleThemeTopbar" title="Toggle theme"><i data-lucide="sun"></i></button>
         <div class="topbar-sep"></div>
         <button class="btn-icon" id="fullscreenBtn" title="Toggle fullscreen"><i data-lucide="maximize"></i></button>
@@ -98,28 +137,20 @@
 
     <div class="content-wrapper">
       <div class="content-pane" id="contentPane">
-        
-        <!-- Welcome Screen -->
-        <div class="welcome fade-in" id="welcomePane">
+        <div class="welcome fade-in">
           <div class="welcome-hero">
             <div class="welcome-logo"><i data-lucide="leaf"></i></div>
             <h2>Hii!</h2>
-            <p> You asked for notes, well, this is just a fancy way of sending them. Easier than dumping files on you.</p>
-            <p>cool, maybe.</p>
-            <p>ab padhl lete hain bhai.</p>
-            <p>~Anshul </p>
-            <p>Select a note from the sidebar to start reading.</p>
+            <p> You asked for notes, well, this is just a fancy way of sending them. Easier than dumping files on you.
+
+cool, maybe.
+
+ab padhl lete hain bhai.
+
+~Anshul </p>
+            <p>Select a note from the sidebar (left side wala) to start reading.</p>
           </div>
         </div>
-        
-        <!-- Reader View -->
-        <div id="readerWrap" class="fade-in hidden"></div>
-
-        <!-- Editor View (Admin only) -->
-        <div id="editorPane" class="editor-pane hidden" style="flex:1; display: flex; flex-direction: column; width: 100%;">
-          <div id="editorCmWrap" class="editor-cm-wrap"></div>
-        </div>
-
       </div>
       <div class="resizer" id="rightResizer" style="display:none;"></div>
       <aside class="sidebar-right hidden" id="outlinePane">
@@ -127,9 +158,19 @@
         <div id="outlineView" class="sidebar-view active">
           <div class="outline-header">
             <div class="outline-title">Outline</div>
-            <button class="btn-link admin-only hidden" id="adminLogoutBtn" style="color:var(--primary-red);">Logout</button>
+            <button class="btn-link" id="viewHighlightsBtn">Highlights</button>
           </div>
           <ul class="outline-list" id="outlineList"></ul>
+        </div>
+        <!-- Highlights View -->
+        <div id="highlightsView" class="sidebar-view hidden">
+          <div class="outline-header">
+            <button class="btn-link back-btn" id="backToOutlineBtn">
+              <i data-lucide="chevron-left"></i> Outline
+            </button>
+          </div>
+          <div class="outline-title" style="margin-top: 0.5rem;">Highlights</div>
+          <div id="highlightsListContainer" class="highlights-container"></div>
         </div>
       </aside>
     </div>
@@ -151,16 +192,34 @@
   </button>
 </div>
 
-<!-- Modals -->
+<!-- Login Modal -->
+<div id="loginModal" class="modal-overlay" style="display:none;">
+  <div class="modal" style="max-width:340px;">
+    <div class="modal-header">
+      <h3>Admin Login</h3>
+      <button class="btn-icon" id="loginModalClose"><i data-lucide="x"></i></button>
+    </div>
+    <div class="modal-body">
+      <div class="form-group">
+        <label>Password</label>
+        <input type="password" id="loginPassword" placeholder="Enter admin password…" autocomplete="new-password">
+        <div id="loginError" style="color:var(--primary-red);font-size:.8rem;margin-top:.35rem;display:none;">Wrong password</div>
+      </div>
+    </div>
+    <div class="modal-footer">
+      <button class="btn btn-primary" id="loginSubmitBtn" style="width:100%;">Login</button>
+    </div>
+  </div>
+</div>
+
+<!-- General Modal -->
 <div class="modal-overlay" id="modalOverlay" style="display: none;">
   <div class="modal">
     <div class="modal-header">
       <h3 id="modalTitle">Modal</h3>
-      <button class="btn-icon" id="modalCloseIcon" onclick="document.getElementById('modalOverlay').style.display='none'"><i data-lucide="x"></i></button>
+      <button class="btn-icon" onclick="document.getElementById('modalOverlay').style.display='none'"><i data-lucide="x"></i></button>
     </div>
-    <div class="modal-body" id="modalBody">
-      <!-- Dynamic Content -->
-    </div>
+    <div class="modal-body" id="modalBody"></div>
     <div class="modal-footer">
       <button class="btn btn-ghost" id="modalCancel">Cancel</button>
       <button class="btn btn-primary" id="modalConfirm">Confirm</button>
@@ -168,30 +227,13 @@
   </div>
 </div>
 
-<div class="modal-overlay" id="loginModal" style="display: none;">
-  <div class="modal" style="max-width: 350px;">
-    <div class="modal-header">
-      <h3>Admin Login</h3>
-      <button class="btn-icon" onclick="document.getElementById('loginModal').style.display='none'"><i data-lucide="x"></i></button>
-    </div>
-    <div class="modal-body">
-      <div class="form-group">
-        <label>Password</label>
-        <input type="password" id="loginPassword" placeholder="Enter admin password..." autocomplete="current-password">
-        <div id="loginError" style="color: var(--primary-red); font-size: 0.8rem; margin-top: 0.5rem; display: none;">Invalid password</div>
-      </div>
-    </div>
-    <div class="modal-footer">
-      <button class="btn btn-primary" id="loginSubmitBtn" style="width: 100%;">Login</button>
-    </div>
-  </div>
-</div>
-
-<!-- Context Menu -->
-<div class="ctx-menu" id="ctxMenu" style="display: none;"></div>
+<!-- Context Menu (admin) -->
+<div class="ctx-menu" id="ctxMenu" style="display:none;"></div>
 
 <!-- Marked.js for perfect Markdown rendering -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script type="module" src="/js/app.js"></script>
+<script src="/js/highlights.js"></script>
+<script src="/js/visitor.js"></script>
+<script src="/js/admin-inline.js"></script>
 </body>
 </html>

@@ -1,0 +1,620 @@
+/* ─────────────────────────────────────────────────────────────────────────────
+   admin-inline.js — Inline admin on top of visitor.js
+   • Loads AFTER visitor.js (plain script, global scope)
+   • Zero changes to visitor.js
+   • All admin features activate only after login
+───────────────────────────────────────────────────────────────────────────── */
+
+(function () {
+  'use strict';
+
+  /* ── State ─────────────────────────────────────────────────────────────── */
+  let isAdmin        = false;
+  let currentNote    = null;   // { path, title, visibility, content }
+  let isDirty        = false;
+  let saveTimeout    = null;
+  let isEditMode     = false;
+  let editorTextarea = null;
+
+  /* ── Boot ──────────────────────────────────────────────────────────────── */
+  document.addEventListener('DOMContentLoaded', async () => {
+    // Silent auth check — if already logged in, activate without toast
+    try {
+      const r = await fetch('/api/auth');
+      const d = await r.json();
+      if (d.admin) activateAdmin(false);
+    } catch (_) {}
+
+    // Login button click
+    document.getElementById('adminLoginBtn')
+      ?.addEventListener('click', () => isAdmin ? doLogout() : openLoginModal());
+
+    // Login modal events
+    document.getElementById('loginModalClose')
+      ?.addEventListener('click', closeLoginModal);
+    document.getElementById('loginModal')
+      ?.addEventListener('click', e => { if (e.target.id === 'loginModal') closeLoginModal(); });
+    document.getElementById('loginSubmitBtn')
+      ?.addEventListener('click', doLogin);
+    document.getElementById('loginPassword')
+      ?.addEventListener('keyup', e => { if (e.key === 'Enter') doLogin(); });
+  });
+
+  /* ── Login Modal ───────────────────────────────────────────────────────── */
+  function openLoginModal() {
+    const pw = document.getElementById('loginPassword');
+    const err = document.getElementById('loginError');
+    if (pw)  pw.value = '';
+    if (err) err.style.display = 'none';
+    const m = document.getElementById('loginModal');
+    if (m) { m.style.display = 'flex'; setTimeout(() => pw?.focus(), 60); }
+  }
+  function closeLoginModal() {
+    const m = document.getElementById('loginModal');
+    if (m) m.style.display = 'none';
+  }
+  async function doLogin() {
+    const pw  = document.getElementById('loginPassword')?.value ?? '';
+    const err = document.getElementById('loginError');
+    try {
+      const res = await fetch('/api/login', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ password: pw }),
+      });
+      if (!res.ok) { if (err) err.style.display = 'block'; return; }
+      // Remove the login modal from DOM entirely — stops password-save prompts
+      document.getElementById('loginModal')?.remove();
+      activateAdmin(true);
+    } catch (_) { if (err) err.style.display = 'block'; }
+  }
+
+  /* ── Activate Admin ────────────────────────────────────────────────────── */
+  function activateAdmin(showToast) {
+    isAdmin = true;
+
+    // Swap "Admin 🔒" button → "Logout"
+    const loginBtn = document.getElementById('adminLoginBtn');
+    if (loginBtn) {
+      loginBtn.innerHTML = 'Logout <i data-lucide="log-out" style="width:11px;height:11px;"></i>';
+      loginBtn.title = 'Logout';
+      // Remove previous listener (re-clone to wipe it)
+      const fresh = loginBtn.cloneNode(true);
+      loginBtn.replaceWith(fresh);
+      fresh.addEventListener('click', doLogout);
+    }
+
+    // Update sidebar label
+    const lbl = document.getElementById('sidebarFooterLabel');
+    if (lbl) lbl.textContent = 'All notes';
+
+    // Show sidebar new-note / new-folder buttons
+    const sab = document.getElementById('sidebarAdminBtns');
+    if (sab) sab.style.display = 'flex';
+
+    // Show topbar read/write toggle
+    const abt = document.getElementById('adminTopbarTools');
+    if (abt) abt.style.display = 'flex';
+
+    // Wire sidebar buttons
+    document.getElementById('sidebarNewNoteBtn')
+      ?.addEventListener('click', () => showNewNoteModal(''));
+    document.getElementById('sidebarNewFolderBtn')
+      ?.addEventListener('click', () => showNewFolderModal());
+
+    // Wire topbar toggle
+    document.getElementById('previewToggleBtn')
+      ?.addEventListener('click', toggleEditMode);
+
+    // Cmd/Ctrl+S save
+    document.addEventListener('keydown', e => {
+      if ((e.metaKey || e.ctrlKey) && e.key === 's') {
+        e.preventDefault();
+        if (isAdmin && currentNote) saveNote();
+      }
+    });
+
+    // Override visitor's openNote so admin gets editor state too
+    const _origOpenNote = window.openNote;
+    window.openNote = async function (notePath) {
+      if (isEditMode && isDirty) await saveNote();
+      await _origOpenNote(notePath);
+      setTimeout(() => adminOpenHook(notePath), 80); // small delay so DOM settles
+    };
+
+    // Patch loadTree to tag folder paths in DOM after render
+    const _origLoadTree = window.loadTree;
+    window.loadTree = async function () {
+      await _origLoadTree();
+      tagFolderPaths(window.tree || [], document.getElementById('fileTree'));
+    };
+
+    // Right-click context menus
+    enableContextMenus();
+
+    // Reload tree to show private notes too
+    if (typeof window.loadTree === 'function') window.loadTree();
+
+    if (showToast && typeof toast === 'function') toast('Logged in as Admin', 'success');
+    if (window.lucide) window.lucide.createIcons();
+
+    // If a note is already open hook it immediately
+    if (typeof currentPath !== 'undefined' && currentPath) {
+      setTimeout(() => adminOpenHook(currentPath), 120);
+    }
+  }
+
+  async function doLogout() {
+    if (isEditMode && isDirty) await saveNote();
+    await fetch('/api/logout', { method: 'POST' });
+    location.reload();
+  }
+
+  /* ── Tag folder paths in DOM (visitor.js doesn't set data-path on folders) */
+  function tagFolderPaths(nodes, container, parentPath = '') {
+    if (!nodes || !container) return;
+    let fi = 0;
+    const folderDivs = Array.from(container.children).filter(
+      el => el.classList.contains('tree-folder') || el.classList.contains('slide-in')
+    );
+    nodes.forEach(node => {
+      if (node.type !== 'folder') return;
+      const el = folderDivs[fi++];
+      if (!el) return;
+      const fullPath = parentPath ? `${parentPath}/${node.name}` : node.name;
+      el.dataset.path = fullPath;
+      const header = el.querySelector(':scope > .tree-folder-header');
+      if (header) header.dataset.path = fullPath;
+      const childrenContainer = el.querySelector(':scope > .tree-folder-children');
+      if (childrenContainer) tagFolderPaths(node.children || [], childrenContainer, fullPath);
+    });
+  }
+
+  /* ── Admin Open Hook ────────────────────────────────────────────────────── */
+  async function adminOpenHook(notePath) {
+    if (!isAdmin) return;
+    const np = notePath.endsWith('.md') ? notePath : notePath + '.md';
+    try {
+      const res = await fetch('/api/note/' + np);
+      if (!res.ok) return;
+      const note = await res.json();
+      currentNote = note;
+      isDirty = false;
+
+      if (isEditMode) {
+        // Already in edit mode — swap textarea content
+        if (editorTextarea) {
+          editorTextarea.value = note.content || '';
+          autoResize(editorTextarea);
+        }
+        updateEditorHeader(note);
+        setStatus('');
+      }
+    } catch (_) {}
+  }
+
+  /* ── Edit/Read Toggle ───────────────────────────────────────────────────── */
+  function toggleEditMode() {
+    if (!currentNote && !isEditMode) {
+      if (typeof toast === 'function') toast('Open a note first', 'info');
+      return;
+    }
+    isEditMode = !isEditMode;
+    refreshToggleBtn();
+
+    if (isEditMode) {
+      enterEditMode();
+    } else {
+      if (isDirty) saveNote();
+      exitEditMode();
+    }
+  }
+
+  function refreshToggleBtn() {
+    const btn  = document.getElementById('previewToggleBtn');
+    const icon = btn?.querySelector('i');
+    if (!btn) return;
+    if (isEditMode) {
+      // Showing edit mode → button lets you go back to reading
+      if (icon) icon.setAttribute('data-lucide', 'book-open');
+      btn.title = 'Switch to Reading Mode';
+      btn.classList.add('btn-active-mode');
+    } else {
+      if (icon) icon.setAttribute('data-lucide', 'pen-line');
+      btn.title = 'Switch to Writing Mode';
+      btn.classList.remove('btn-active-mode');
+    }
+    if (window.lucide) window.lucide.createIcons({ root: btn });
+  }
+
+  /* ── Editor DOM ─────────────────────────────────────────────────────────── */
+  function enterEditMode() {
+    // Build the editor pane once
+    let ep = document.getElementById('adminEditorPane');
+    if (!ep) ep = buildEditorPane();
+
+    // Hide visitor content pane, show editor
+    const contentPane = document.getElementById('contentPane');
+    if (contentPane) contentPane.style.display = 'none';
+    ep.style.display = 'flex';
+
+    if (currentNote) {
+      if (editorTextarea) {
+        editorTextarea.value = currentNote.content || '';
+        autoResize(editorTextarea);
+      }
+      updateEditorHeader(currentNote);
+    }
+    setStatus('');
+    setTimeout(() => editorTextarea?.focus(), 60);
+  }
+
+  function exitEditMode() {
+    const ep = document.getElementById('adminEditorPane');
+    if (ep) ep.style.display = 'none';
+    const contentPane = document.getElementById('contentPane');
+    if (contentPane) contentPane.style.display = '';
+  }
+
+  function buildEditorPane() {
+    const pane = document.createElement('div');
+    pane.id = 'adminEditorPane';
+    pane.style.cssText = 'display:none;flex-direction:column;flex:1;overflow:hidden;min-width:0;';
+
+    /* Header bar */
+    const header = document.createElement('div');
+    header.id = 'adminEditorHeader';
+    header.className = 'admin-editor-header';
+
+    const titleInput = document.createElement('input');
+    titleInput.type = 'text';
+    titleInput.id = 'editorTitleInput';
+    titleInput.className = 'editor-title-input';
+    titleInput.placeholder = 'Note title…';
+    titleInput.autocomplete = 'off';
+    titleInput.addEventListener('input', () => {
+      if (currentNote) currentNote.title = titleInput.value.trim();
+      isDirty = true;
+      scheduleSave();
+    });
+
+    const visBtn = document.createElement('button');
+    visBtn.id = 'editorVisBtn';
+    visBtn.className = 'editor-vis-btn visibility-toggle private';
+    visBtn.innerHTML = '<i data-lucide="lock" style="width:12px;height:12px;"></i><span>Private</span>';
+    visBtn.addEventListener('click', () => {
+      if (!currentNote) return;
+      const v = currentNote.visibility === 'public' ? 'private' : 'public';
+      currentNote.visibility = v;
+      refreshVisBtn(v);
+      isDirty = true;
+      scheduleSave();
+    });
+
+    const statusEl = document.createElement('span');
+    statusEl.id = 'editorStatus';
+    statusEl.className = 'save-status';
+    statusEl.style.marginLeft = 'auto';
+
+    header.appendChild(titleInput);
+    header.appendChild(visBtn);
+    header.appendChild(statusEl);
+
+    /* Textarea scroll container */
+    const scroll = document.createElement('div');
+    scroll.className = 'editor-scroll';
+
+    editorTextarea = document.createElement('textarea');
+    editorTextarea.id = 'adminEditorTextarea';
+    editorTextarea.className = 'admin-editor-textarea';
+    editorTextarea.placeholder = 'Start writing in Markdown…';
+    editorTextarea.spellcheck = true;
+    editorTextarea.addEventListener('input', () => {
+      autoResize(editorTextarea);
+      if (currentNote) currentNote.content = editorTextarea.value;
+      isDirty = true;
+      scheduleSave();
+    });
+    editorTextarea.addEventListener('keydown', e => {
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        const s = editorTextarea.selectionStart;
+        const v = editorTextarea.value;
+        editorTextarea.value = v.slice(0, s) + '  ' + v.slice(editorTextarea.selectionEnd);
+        editorTextarea.selectionStart = editorTextarea.selectionEnd = s + 2;
+        autoResize(editorTextarea);
+      }
+    });
+
+    scroll.appendChild(editorTextarea);
+    pane.appendChild(header);
+    pane.appendChild(scroll);
+
+    // Insert before contentPane (same parent)
+    const contentPane = document.getElementById('contentPane');
+    contentPane.parentNode.insertBefore(pane, contentPane);
+    return pane;
+  }
+
+  function updateEditorHeader(note) {
+    const ti = document.getElementById('editorTitleInput');
+    if (ti) ti.value = note.title || note.path?.replace(/\.md$/, '').split('/').pop() || '';
+    refreshVisBtn(note.visibility);
+  }
+
+  function refreshVisBtn(vis) {
+    const btn = document.getElementById('editorVisBtn');
+    if (!btn) return;
+    btn.className = `editor-vis-btn visibility-toggle ${vis}`;
+    btn.innerHTML = `<i data-lucide="${vis === 'public' ? 'globe' : 'lock'}" style="width:12px;height:12px;"></i><span>${vis === 'public' ? 'Public' : 'Private'}</span>`;
+    if (window.lucide) window.lucide.createIcons({ root: btn });
+  }
+
+  function autoResize(ta) {
+    ta.style.height = 'auto';
+    ta.style.height = Math.max(ta.scrollHeight, 300) + 'px';
+  }
+
+  /* ── Autosave ───────────────────────────────────────────────────────────── */
+  function scheduleSave() {
+    setStatus('Unsaved…', '');
+    clearTimeout(saveTimeout);
+    saveTimeout = setTimeout(saveNote, 2000);
+  }
+
+  async function saveNote() {
+    if (!currentNote) return;
+    clearTimeout(saveTimeout);
+    setStatus('Saving…', 'saving');
+
+    const content    = editorTextarea ? editorTextarea.value : (currentNote.content || '');
+    const titleEl    = document.getElementById('editorTitleInput');
+    const title      = (titleEl?.value || '').trim() || currentNote.path.replace(/\.md$/, '').split('/').pop();
+    const visibility = currentNote.visibility || 'private';
+
+    try {
+      const res = await fetch('/api/note/' + currentNote.path, {
+        method: 'PUT',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ content, title, visibility }),
+      });
+      if (!res.ok) throw new Error();
+      currentNote.content    = content;
+      currentNote.title      = title;
+      isDirty = false;
+      const t = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
+      setStatus(`✓ Saved ${t}`, 'saved');
+      if (typeof loadTree === 'function') loadTree();
+      setTimeout(() => { if (!isDirty) setStatus('', ''); }, 3000);
+    } catch {
+      setStatus('⚠ Save failed', '');
+    }
+  }
+
+  function setStatus(text, cls) {
+    const el = document.getElementById('editorStatus');
+    if (!el) return;
+    el.textContent = text;
+    el.className = 'save-status' + (cls ? ' ' + cls : '');
+  }
+
+  /* ── Context Menus ─────────────────────────────────────────────────────── */
+  function enableContextMenus() {
+    const ft = document.getElementById('fileTree');
+    if (!ft) return;
+    ft.addEventListener('contextmenu', e => {
+      const noteEl   = e.target.closest('.tree-note');
+      const folderEl = e.target.closest('.tree-folder-header');
+
+      if (noteEl) {
+        e.preventDefault();
+        const path = noteEl.dataset.path || '';
+        const name = noteEl.querySelector('.note-title')?.textContent?.trim() || path;
+        showCtxMenu(e, [
+          { icon: 'pen-line',  label: 'Rename',    cb: () => showRenameModal('note', path, name) },
+          { icon: 'trash-2',   label: 'Delete',     cb: () => confirmDelete('note', path, name), danger: true },
+        ]);
+      } else if (folderEl) {
+        e.preventDefault();
+        // path is tagged by tagFolderPaths on the header element
+        const path = folderEl.dataset.path || folderEl.closest('.tree-folder')?.dataset?.path || '';
+        const name = folderEl.querySelector('.folder-name')?.textContent?.trim() || path.split('/').pop() || 'folder';
+        showCtxMenu(e, [
+          { icon: 'file-plus',   label: 'New Note Here',  cb: () => showNewNoteModal(path) },
+          { icon: 'folder-plus', label: 'New Subfolder',   cb: () => showNewFolderModal(path) },
+          { icon: 'pen-line',    label: 'Rename',          cb: () => showRenameModal('folder', path, name) },
+          { icon: 'trash-2',     label: 'Delete Folder',   cb: () => confirmDelete('folder', path, name), danger: true },
+        ]);
+      }
+    });
+
+    document.addEventListener('click', closeCtx);
+    document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCtx(); });
+  }
+
+  function showCtxMenu(e, items) {
+    closeCtx();
+    const menu = document.getElementById('ctxMenu');
+    if (!menu) return;
+    menu.innerHTML = '';
+    items.forEach(item => {
+      const el = document.createElement('div');
+      el.className = 'ctx-item' + (item.danger ? ' danger' : '');
+      el.innerHTML = `<i data-lucide="${item.icon}" style="width:14px;height:14px;"></i><span>${xss(item.label)}</span>`;
+      el.addEventListener('click', () => { closeCtx(); item.cb(); });
+      menu.appendChild(el);
+    });
+    menu.style.display = 'block';
+    const x = Math.min(e.clientX, window.innerWidth  - 175);
+    const y = Math.min(e.clientY, window.innerHeight - items.length * 36 - 20);
+    menu.style.left = x + 'px';
+    menu.style.top  = y + 'px';
+    if (window.lucide) window.lucide.createIcons({ root: menu });
+    // close on next click
+    setTimeout(() => document.addEventListener('click', closeCtx, { once: true }), 0);
+  }
+
+  function closeCtx() {
+    const m = document.getElementById('ctxMenu');
+    if (m) m.style.display = 'none';
+  }
+
+  /* ── Generic Modal ─────────────────────────────────────────────────────── */
+  function showModal(title, bodyHTML, confirmText, onConfirm, danger) {
+    const overlay = document.getElementById('modalOverlay');
+    if (!overlay) return;
+    document.getElementById('modalTitle').textContent  = title;
+    document.getElementById('modalBody').innerHTML     = bodyHTML;
+    overlay.style.display = 'flex';
+
+    // Fresh buttons (wipe old listeners)
+    let cb = document.getElementById('modalConfirm');
+    let nc = cb.cloneNode(true);
+    cb.parentNode.replaceChild(nc, cb);
+    nc.textContent = confirmText;
+    nc.style.background = danger ? 'var(--primary-red)' : '';
+
+    let cnl = document.getElementById('modalCancel');
+    let ncl = cnl.cloneNode(true);
+    cnl.parentNode.replaceChild(ncl, cnl);
+
+    const close  = () => { overlay.style.display = 'none'; document.removeEventListener('keydown', kd); };
+    const submit = () => { close(); onConfirm(); };
+    nc.addEventListener('click', submit);
+    ncl.addEventListener('click', close);
+    overlay.onclick = ev => { if (ev.target === overlay) close(); };
+    function kd(ev) {
+      if (ev.key === 'Enter') { ev.preventDefault(); submit(); }
+      else if (ev.key === 'Escape') close();
+    }
+    document.addEventListener('keydown', kd);
+  }
+
+  /* ── CRUD Modals ────────────────────────────────────────────────────────── */
+  function showNewNoteModal(inFolder) {
+    showModal('New Note', `
+      <div class="form-group">
+        <label>Folder (optional)</label>
+        <input type="text" id="mFolder" value="${xss(inFolder || '')}" placeholder="folder/subfolder" autocomplete="off">
+      </div>
+      <div class="form-group">
+        <label>Note name</label>
+        <input type="text" id="mName" placeholder="my-note" autocomplete="off" autofocus>
+      </div>
+      <div class="form-group">
+        <label>Visibility</label>
+        <select id="mVis" style="width:100%;padding:.45rem .6rem;background:var(--bg-secondary);color:var(--text-normal);border:1px solid var(--border);border-radius:var(--radius-sm);">
+          <option value="private">🔒 Private</option>
+          <option value="public">🌐 Public</option>
+        </select>
+      </div>`,
+      'Create', async () => {
+        const folder   = document.getElementById('mFolder')?.value.trim();
+        const rawName  = document.getElementById('mName')?.value.trim().replace(/\.md$/, '');
+        const vis      = document.getElementById('mVis')?.value || 'private';
+        if (!rawName) { toast('Please enter a name', 'error'); return; }
+        const notePath = folder ? `${folder}/${rawName}` : rawName;
+        const res = await fetch('/api/note', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: notePath, title: rawName, visibility: vis, content: '' }),
+        });
+        if (!res.ok) { toast('Failed to create note', 'error'); return; }
+        toast('Note created!', 'success');
+        if (typeof loadTree === 'function') await loadTree();
+        // Open it AND switch to edit mode immediately
+        if (typeof window.openNote === 'function') {
+          await window.openNote(notePath + '.md');
+          // Small delay so adminOpenHook finishes first
+          setTimeout(() => {
+            if (!isEditMode) toggleEditMode();
+          }, 150);
+        }
+      }
+    );
+    setTimeout(() => document.getElementById('mName')?.focus(), 60);
+  }
+
+  function showNewFolderModal(parentPath) {
+    showModal('New Folder', `
+      <div class="form-group">
+        <label>Folder name</label>
+        <input type="text" id="mFolderName" value="${xss(parentPath ? parentPath + '/' : '')}" placeholder="my-folder" autocomplete="off" autofocus>
+      </div>`,
+      'Create', async () => {
+        const name = document.getElementById('mFolderName')?.value.trim();
+        if (!name) return;
+        const res = await fetch('/api/folder', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ path: name }),
+        });
+        if (!res.ok) { toast('Failed to create folder', 'error'); return; }
+        toast('Folder created!', 'success');
+        if (typeof loadTree === 'function') loadTree();
+      }
+    );
+    setTimeout(() => { const i = document.getElementById('mFolderName'); i?.focus(); i?.select(); }, 60);
+  }
+
+  function showRenameModal(type, itemPath, currentName) {
+    showModal(
+      `Rename ${type === 'note' ? 'Note' : 'Folder'}`,
+      `<div class="form-group">
+        <label>New name</label>
+        <input type="text" id="mNewName" value="${xss(currentName)}" autocomplete="off">
+      </div>`,
+      'Rename', async () => {
+        const newName = document.getElementById('mNewName')?.value.trim();
+        if (!newName || newName === currentName) return;
+        const dir     = itemPath.split('/').slice(0, -1).join('/');
+        const newPath = dir ? `${dir}/${newName}` : newName;
+        const res = await fetch('/api/rename', {
+          method: 'POST',
+          headers: { 'Content-Type': 'application/json' },
+          body: JSON.stringify({ oldPath: itemPath, newPath, type }),
+        });
+        if (!res.ok) { toast('Rename failed', 'error'); return; }
+        toast('Renamed!', 'success');
+        if (typeof loadTree === 'function') loadTree();
+      }
+    );
+    setTimeout(() => { const i = document.getElementById('mNewName'); i?.focus(); i?.select(); }, 60);
+  }
+
+  function confirmDelete(type, itemPath, name) {
+    showModal(
+      `Delete ${type === 'note' ? 'Note' : 'Folder'}`,
+      `<p style="color:var(--text-normal)">Delete <strong>"${xss(name)}"</strong>?${
+        type === 'folder'
+          ? '<br><small style="color:var(--primary-red);margin-top:.35rem;display:block;">All notes inside will also be deleted.</small>'
+          : ''
+      }</p>`,
+      'Delete', async () => {
+        const isNote = type === 'note';
+        const url = isNote
+          ? '/api/note/' + (itemPath.endsWith('.md') ? itemPath : itemPath + '.md')
+          : '/api/folder/' + itemPath;
+        const res = await fetch(url, { method: 'DELETE' });
+        if (!res.ok) { toast('Delete failed', 'error'); return; }
+        toast('Deleted', 'info');
+        // If we deleted the currently open note, exit edit mode and show welcome
+        if (isNote && currentNote?.path === (itemPath.endsWith('.md') ? itemPath : itemPath + '.md')) {
+          currentNote = null;
+          if (isEditMode) { isEditMode = false; refreshToggleBtn(); exitEditMode(); }
+          if (typeof showWelcome === 'function') showWelcome();
+        }
+        if (typeof loadTree === 'function') loadTree();
+      },
+      true /* danger */
+    );
+  }
+
+  /* ── Util ───────────────────────────────────────────────────────────────── */
+  function xss(s) {
+    return String(s)
+      .replace(/&/g, '&amp;').replace(/</g, '&lt;')
+      .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+})();

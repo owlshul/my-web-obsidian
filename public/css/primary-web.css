@@ -80,9 +80,9 @@ body.theme-dark {
   --bg-active:      hsla(43, 83%, 57%, 0.10);
 
   /* Text */
-  --text-normal:    hsl(34,  40%, 88%);       /* Improved contrast */
-  --text-muted:     hsl(28,  30%, 65%);
-  --text-faint:     hsl(28,  30%, 50%);
+  --text-normal:    hsl(34,  39%, 74%);       /* graph focused: hsla(34,39%,74%) */
+  --text-muted:     hsl(28,  22%, 48%);
+  --text-faint:     hsl(28,  22%, 35%);
 
   /* Borders */
   --border:         hsl(28,  12%, 22%);
@@ -100,14 +100,14 @@ body.theme-dark {
   --accent:         hsla(42,  79%, 51%, 1);
   --accent-hover:   hsla(43,  83%, 57%, 1);
 
-  /* Primary accent colors — dark variants (brightened for contrast) */
-  --primary-red:    hsla(4,   90%, 70%, 1);
-  --primary-orange: hsla(24,  90%, 65%, 1);
-  --primary-yellow: hsla(42,  85%, 65%, 1);
-  --primary-green:  hsla(160, 55%, 65%, 1);
-  --primary-teal:   hsla(178, 35%, 55%, 1);
-  --primary-blue:   hsla(194, 65%, 65%, 1);
-  --primary-purple: hsla(242, 60%, 75%, 1);
+  /* Primary accent colors — dark variants */
+  --primary-red:    hsla(4,   88%, 61%, 1);
+  --primary-orange: hsla(24,  84%, 50%, 1);
+  --primary-yellow: hsla(42,  79%, 51%, 1);
+  --primary-green:  hsla(160, 50%, 55%, 1);
+  --primary-teal:   hsla(178, 31%, 41%, 1);
+  --primary-blue:   hsla(194, 59%, 56%, 1);
+  --primary-purple: hsla(242, 52%, 69%, 1);
 
   --shadow-sm:  0 1px 3px hsla(0,0%,0%,.25);
   --shadow-md:  0 4px 12px hsla(0,0%,0%,.35);
