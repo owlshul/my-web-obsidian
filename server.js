@@ -386,8 +386,8 @@ app.post('/api/rename', requireAdmin, async (req, res) => {
       
       const note = await Note.findOne({ path: oldNp });
       if (!note) return res.status(404).json({ error: 'Not found' });
-      
       note.path = newNp;
+      note.title = newPath.split('/').pop().replace(/\.md$/, '');
       await note.save();
     } else {
       // It's a folder, cascade rename
