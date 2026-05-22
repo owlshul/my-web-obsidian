@@ -610,22 +610,28 @@
         const vis      = document.getElementById('mVis')?.value || 'private';
         if (!rawName) { toast('Please enter a name', 'error'); return; }
         const notePath = folder ? `${folder}/${rawName}` : rawName;
+        closeModal();
+
+        // OPTIMISTIC UI: Pre-fill currentNote and open instantly
+        currentNote = { path: notePath + '.md', title: rawName, visibility: vis, content: '' };
+        if (typeof window.openNote === 'function') {
+          window.openNote(notePath + '.md').then(() => {
+            if (!isEditMode) toggleEditMode();
+          });
+        }
+
         const res = await fetch('/api/note', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ path: notePath, title: rawName, visibility: vis, content: '' }),
         });
-        if (!res.ok) { toast('Failed to create note', 'error'); return; }
-        toast('Note created!', 'success');
-        if (typeof loadTree === 'function') await loadTree();
-        // Open it AND switch to edit mode immediately
-        if (typeof window.openNote === 'function') {
-          await window.openNote(notePath + '.md');
-          // Small delay so adminOpenHook finishes first
-          setTimeout(() => {
-            if (!isEditMode) toggleEditMode();
-          }, 150);
+        if (!res.ok) { 
+          toast('Failed to create note', 'error'); 
+          if (typeof loadTree === 'function') loadTree();
+          return; 
         }
+        toast('Note created!', 'success');
+        if (typeof loadTree === 'function') loadTree();
       }
     );
     setTimeout(() => document.getElementById('mName')?.focus(), 60);
@@ -641,12 +647,30 @@
         const name = document.getElementById('mFolderName')?.value.trim();
         if (!name) return;
         
-        // OPTIMISTIC UI: Add placeholder to tree
+        // OPTIMISTIC UI: Add functional folder to tree
         const ft = document.getElementById('fileTree');
-        const folderNode = document.createElement('div');
-        folderNode.className = 'tree-folder';
-        folderNode.innerHTML = `<div class="tree-folder-header" data-path="${xss(name)}"><span>${xss(name.split('/').pop())}</span></div>`;
-        ft.appendChild(folderNode);
+        let folderNode;
+        if (typeof buildFolderNode === 'function') {
+          folderNode = buildFolderNode({ name: name.split('/').pop(), path: name, type: 'folder', children: [] });
+        } else {
+          folderNode = document.createElement('div');
+          folderNode.className = 'tree-folder';
+          folderNode.innerHTML = `<div class="tree-folder-header" data-path="${xss(name)}"><span>${xss(name.split('/').pop())}</span></div>`;
+        }
+        
+        // Append inside parent folder or root
+        if (parentPath) {
+           const parentHeader = document.querySelector(`[data-path="${parentPath.replace(/"/g, '\\"')}"]`);
+           if (parentHeader && parentHeader.nextElementSibling) {
+              parentHeader.nextElementSibling.appendChild(folderNode);
+              parentHeader.querySelector('.folder-chevron')?.classList.add('open');
+              parentHeader.nextElementSibling.style.display = '';
+           } else {
+              ft.appendChild(folderNode);
+           }
+        } else {
+           ft.appendChild(folderNode);
+        }
 
         const res = await fetch('/api/folder', {
           method: 'POST',
@@ -673,12 +697,54 @@
         if (!newName || newName === currentName) return;
         const dir     = itemPath.split('/').slice(0, -1).join('/');
         const newPath = dir ? `${dir}/${newName}` : newName;
+        closeModal();
+
+        // OPTIMISTIC UI: Instantly rename in tree
+        const el = document.querySelector(`[data-path="${itemPath.replace(/"/g, '\\"')}"]`);
+        if (el) {
+          if (type === 'note') {
+            const titleSpan = el.querySelector('.note-title');
+            if (titleSpan) titleSpan.textContent = newName;
+            el.dataset.path = newPath;
+          } else {
+            const nameSpan = el.querySelector('.folder-name');
+            if (nameSpan) nameSpan.textContent = newName;
+            el.dataset.path = newPath;
+            // Cascade update children paths
+            const prefix = itemPath + '/';
+            const newPrefix = newPath + '/';
+            el.closest('.tree-folder')?.querySelectorAll('[data-path]').forEach(childEl => {
+              if (childEl.dataset.path && childEl.dataset.path.startsWith(prefix)) {
+                childEl.dataset.path = childEl.dataset.path.replace(prefix, newPrefix);
+              }
+            });
+          }
+        }
+
+        // OPTIMISTIC UI: Update currentNote if it was the one renamed
+        if (type === 'note' && currentNote && currentNote.path === (itemPath.endsWith('.md') ? itemPath : itemPath + '.md')) {
+          const newNp = newPath.endsWith('.md') ? newPath : newPath + '.md';
+          currentNote.path = newNp;
+          currentNote.title = newName;
+          if (typeof currentPath !== 'undefined') currentPath = newNp;
+          const urlPath = '/note/' + newNp.replace(/\.md$/, '');
+          window.history.replaceState({}, '', urlPath);
+          const editorTitle = document.getElementById('editorTitleInput');
+          if (editorTitle) editorTitle.value = newName;
+          const displayTitle = document.querySelector('.note-title-display');
+          if (displayTitle) displayTitle.childNodes[0].nodeValue = newName + ' ';
+        }
+
         const res = await fetch('/api/rename', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
           body: JSON.stringify({ oldPath: itemPath, newPath, type }),
         });
-        if (!res.ok) { toast('Rename failed', 'error'); return; }
+        if (!res.ok) { 
+          toast('Rename failed', 'error'); 
+          if (typeof loadTree === 'function') loadTree();
+          return; 
+        }
         toast('Renamed!', 'success');
         if (typeof loadTree === 'function') loadTree();
       }
@@ -866,11 +932,13 @@
       });
       if (!res.ok) {
         if (typeof toast === 'function') toast('Move failed', 'error');
+        if (typeof loadTree === 'function') loadTree();
         return;
       }
       // Success, SSE handles tree update
     } catch (e) {
       if (typeof toast === 'function') toast('Move failed', 'error');
+      if (typeof loadTree === 'function') loadTree();
     }
   }
 

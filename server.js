@@ -164,6 +164,9 @@ app.get('/api/auth', (req, res) => {
 
 // ─── File Tree ────────────────────────────────────────────────────────────────
 app.get('/api/tree', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   try {
     const isAdmin = !!req.session.admin;
     const tree = await buildTree(isAdmin);
@@ -424,6 +427,9 @@ app.post('/api/rename', requireAdmin, async (req, res) => {
 
 // ─── Recent Notes ─────────────────────────────────────────────────────────────
 app.get('/api/recent', async (req, res) => {
+  res.setHeader('Cache-Control', 'no-store, no-cache, must-revalidate, proxy-revalidate');
+  res.setHeader('Pragma', 'no-cache');
+  res.setHeader('Expires', '0');
   try {
     const notes = await Note.find({ visibility: 'public' })
       .sort({ updated: -1 })

@@ -271,7 +271,7 @@ function applyTheme() {
 // ─── Tree Loading ─────────────────────────────────────────────────────────────
 async function loadTree() {
   try {
-    const res = await fetch('/api/tree');
+    const res = await fetch('/api/tree?t=' + Date.now(), { cache: 'no-store' });
     tree = await res.json();
     renderTree(tree);
   } catch {
