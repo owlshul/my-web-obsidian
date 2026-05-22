@@ -733,13 +733,12 @@
 
   async function moveItem(sourcePath, targetFolder) {
     const name = sourcePath.split('/').pop();
-    const isNote = sourcePath.endsWith('.md');
-    const destPath = targetFolder ? \`\${targetFolder}/\${name}\` : name;
+    const destPath = targetFolder ? `${targetFolder}/${name}` : name;
     
     if (sourcePath === destPath) return; // Didn't move
     
     try {
-      const type = document.querySelector(\`[data-path="\${sourcePath}"]\`)?.classList.contains('tree-folder-header') ? 'folder' : 'note';
+      const type = document.querySelector(`[data-path="${sourcePath}"]`)?.classList.contains('tree-folder-header') ? 'folder' : 'note';
       const res = await fetch('/api/rename', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
