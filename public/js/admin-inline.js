@@ -525,7 +525,6 @@
 
   /* ── CRUD Modals ────────────────────────────────────────────────────────── */
   function showNewNoteModal(inFolder) {
-    // Get all folders from the DOM reliably
     const folderEls = document.querySelectorAll('.tree-folder-header');
     const folders = Array.from(folderEls).map(el => el.dataset.path).filter(Boolean);
     
@@ -719,16 +718,28 @@
       const sourcePath = e.dataTransfer.getData('text/plain');
       if (!sourcePath) return;
       
-      let targetPath = '';
+      let targetPath = null;
+      const noteEl = e.target.closest('.tree-note');
+      
       if (folder) {
-        targetPath = folder.dataset.path;
-      } else if (e.target === ft || e.target.classList.contains('tree-empty')) {
+        targetPath = folder.dataset.path || '';
+      } else if (noteEl) {
+        const parentChildren = noteEl.closest('.tree-folder-children');
+        if (parentChildren) {
+          const header = parentChildren.previousElementSibling;
+          if (header && header.classList.contains('tree-folder-header')) {
+            targetPath = header.dataset.path;
+          }
+        } else {
+          targetPath = '';
+        }
+      } else if (e.target === ft || e.target.classList.contains('tree-empty') || e.target.classList.contains('tree-folder-children')) {
         targetPath = '';
       } else {
-        return; // Dropped on something invalid
+        return;
       }
       
-      // Prevent dropping into itself or its own subfolder
+      if (targetPath === null) return;
       if (targetPath === sourcePath || targetPath.startsWith(sourcePath + '/')) return;
       
       await moveItem(sourcePath, targetPath);
@@ -741,8 +752,25 @@
     
     if (sourcePath === destPath) return; // Didn't move
     
+    // OPTIMISTIC UI: Instantly visually move the item
+    const el = document.querySelector(`[data-path="${sourcePath}"]`);
+    let type = 'note';
+    if (el) {
+      type = el.classList.contains('tree-folder-header') ? 'folder' : 'note';
+      const actualNode = el.closest('.tree-note') || el.closest('.tree-folder');
+      if (actualNode) {
+        const targetChildren = targetFolder === '' 
+           ? document.getElementById('fileTree')
+           : document.querySelector(`[data-path="${targetFolder}"]`)?.nextElementSibling;
+           
+        if (targetChildren && (targetChildren.classList.contains('tree-folder-children') || targetChildren.id === 'fileTree')) {
+          targetChildren.appendChild(actualNode);
+          el.dataset.path = destPath; // Prevent double-triggering
+        }
+      }
+    }
+    
     try {
-      const type = document.querySelector(`[data-path="${sourcePath}"]`)?.classList.contains('tree-folder-header') ? 'folder' : 'note';
       const res = await fetch('/api/rename', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
