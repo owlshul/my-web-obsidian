@@ -307,6 +307,7 @@ function buildFolderNode(folder) {
   const header = document.createElement('div');
   header.className = 'tree-folder-header';
   header.innerHTML = `
+    <span class="drag-grip" style="display:none; cursor:grab; opacity:0; transition:opacity 0.2s; margin-left:-4px; margin-right:4px; align-items:center"><i data-lucide="grip-vertical" style="width:12px;height:12px;"></i></span>
     <span class="folder-chevron open"><i data-lucide="chevron-right" style="width:12px;height:12px;"></i></span>
     <span class="folder-icon"><i data-lucide="folder" style="width:14px;height:14px;"></i></span>
     <span class="folder-name" title="${esc(folder.name)}">${esc(folder.name)}</span>
@@ -343,6 +344,7 @@ function buildNoteNode(note) {
   el.dataset.path = note.path;
   const title = note.title || note.name;
   el.innerHTML = `
+    <span class="drag-grip" style="display:none; cursor:grab; opacity:0; transition:opacity 0.2s; margin-left:-4px; margin-right:4px; align-items:center"><i data-lucide="grip-vertical" style="width:12px;height:12px;"></i></span>
     <span class="note-icon"><i data-lucide="file-text" style="width:14px;height:14px;"></i></span>
     <span class="note-title" title="${esc(title)}">${esc(title)}</span>
   `;

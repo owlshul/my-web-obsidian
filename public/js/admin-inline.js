@@ -138,6 +138,24 @@
     if (showToast && typeof toast === 'function') toast('Logged in as Admin', 'success');
     if (window.lucide) window.lucide.createIcons();
 
+    // Inject admin styles (show grips, etc)
+    if (!document.getElementById('adminInlineStyles')) {
+      const st = document.createElement('style');
+      st.id = 'adminInlineStyles';
+      st.innerHTML = `.drag-grip { display: flex !important; }`;
+      document.head.appendChild(st);
+    }
+    
+    // Setup SSE for live updates
+    if (!window.adminEventSource) {
+      window.adminEventSource = new EventSource('/api/events');
+      window.adminEventSource.addEventListener('update', () => {
+        if (typeof window.loadTree === 'function') window.loadTree();
+      });
+    }
+
+    setupDragAndDrop();
+
     // If a note is already open hook it immediately
     if (typeof currentPath !== 'undefined' && currentPath) {
       setTimeout(() => adminOpenHook(currentPath), 120);
@@ -146,6 +164,7 @@
 
   async function doLogout() {
     if (isEditMode && isDirty) await saveNote();
+    if (window.adminEventSource) { window.adminEventSource.close(); window.adminEventSource = null; }
     await fetch('/api/logout', { method: 'POST' });
     location.reload();
   }
@@ -216,11 +235,11 @@
     if (!btn) return;
     if (isEditMode) {
       // Showing edit mode → button lets you go back to reading
-      if (icon) icon.setAttribute('data-lucide', 'book-open');
+      if (icon) icon.setAttribute('data-lucide', 'glasses');
       btn.title = 'Switch to Reading Mode';
       btn.classList.add('btn-active-mode');
     } else {
-      if (icon) icon.setAttribute('data-lucide', 'pen-line');
+      if (icon) icon.setAttribute('data-lucide', 'pen');
       btn.title = 'Switch to Writing Mode';
       btn.classList.remove('btn-active-mode');
     }
@@ -372,6 +391,10 @@
     const title      = (titleEl?.value || '').trim() || currentNote.path.replace(/\.md$/, '').split('/').pop();
     const visibility = currentNote.visibility || 'private';
 
+    // Optimistically update the currentNote so switching to Read Mode instantly shows it
+    currentNote.content = content;
+    currentNote.title = title;
+
     try {
       const res = await fetch('/api/note/' + currentNote.path, {
         method: 'PUT',
@@ -379,8 +402,6 @@
         body: JSON.stringify({ content, title, visibility }),
       });
       if (!res.ok) throw new Error();
-      currentNote.content    = content;
-      currentNote.title      = title;
       isDirty = false;
       const t = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
       setStatus(`✓ Saved ${t}`, 'saved');
@@ -492,10 +513,25 @@
 
   /* ── CRUD Modals ────────────────────────────────────────────────────────── */
   function showNewNoteModal(inFolder) {
+    const getFolders = (nodes) => {
+      let f = [];
+      nodes.forEach(n => {
+        if (n.type === 'folder') { f.push(n.path || n.name); f.push(...getFolders(n.children || [])); }
+      });
+      return f;
+    };
+    const folders = getFolders(window.tree || []);
+    let folderOptions = '<option value="">(Root)</option>';
+    folders.forEach(f => {
+      folderOptions += `<option value="${xss(f)}" ${f === inFolder ? 'selected' : ''}>${xss(f)}</option>`;
+    });
+
     showModal('New Note', `
       <div class="form-group">
         <label>Folder (optional)</label>
-        <input type="text" id="mFolder" value="${xss(inFolder || '')}" placeholder="folder/subfolder" autocomplete="off">
+        <select id="mFolder" style="width:100%;padding:.45rem .6rem;background:var(--bg-secondary);color:var(--text-normal);border:1px solid var(--border);border-radius:var(--radius-sm);">
+          ${folderOptions}
+        </select>
       </div>
       <div class="form-group">
         <label>Note name</label>
@@ -615,6 +651,109 @@
     return String(s)
       .replace(/&/g, '&amp;').replace(/</g, '&lt;')
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
+  }
+
+  /* ── Drag and Drop ──────────────────────────────────────────────────────── */
+  function setupDragAndDrop() {
+    const ft = document.getElementById('fileTree');
+    if (!ft) return;
+    
+    // Setup items when tree loads
+    const observer = new MutationObserver(() => {
+      if (!isAdmin) return;
+      ft.querySelectorAll('.tree-note, .tree-folder-header').forEach(el => {
+        if (!el.draggable) {
+          el.draggable = true;
+          el.addEventListener('dragstart', handleDragStart);
+          el.addEventListener('dragover', handleDragOver);
+          el.addEventListener('dragleave', handleDragLeave);
+          el.addEventListener('drop', handleDrop);
+        }
+      });
+    });
+    observer.observe(ft, { childList: true, subtree: true });
+    
+    ft.addEventListener('dragover', e => {
+      e.preventDefault();
+      if (e.target === ft || e.target.classList.contains('tree-empty')) {
+        ft.classList.add('drag-over');
+      }
+    });
+    ft.addEventListener('dragleave', e => {
+      if (e.target === ft || e.target.classList.contains('tree-empty')) {
+        ft.classList.remove('drag-over');
+      }
+    });
+    ft.addEventListener('drop', async e => {
+      e.preventDefault();
+      ft.classList.remove('drag-over');
+      if (e.target === ft || e.target.classList.contains('tree-empty')) {
+        const itemPath = e.dataTransfer.getData('text/plain');
+        if (itemPath) await moveItem(itemPath, '');
+      }
+    });
+  }
+
+  function handleDragStart(e) {
+    const el = e.target.closest('.tree-note') || e.target.closest('.tree-folder-header');
+    if (!el) return;
+    const path = el.dataset.path;
+    if (path) {
+      e.dataTransfer.setData('text/plain', path);
+      e.dataTransfer.effectAllowed = 'move';
+    }
+  }
+
+  function handleDragOver(e) {
+    e.preventDefault();
+    e.dataTransfer.dropEffect = 'move';
+    const folder = e.target.closest('.tree-folder-header');
+    if (folder) folder.classList.add('drag-over');
+  }
+
+  function handleDragLeave(e) {
+    const folder = e.target.closest('.tree-folder-header');
+    if (folder) folder.classList.remove('drag-over');
+  }
+
+  async function handleDrop(e) {
+    e.preventDefault();
+    e.stopPropagation();
+    const folder = e.target.closest('.tree-folder-header');
+    if (folder) folder.classList.remove('drag-over');
+    const sourcePath = e.dataTransfer.getData('text/plain');
+    if (!sourcePath) return;
+    
+    const targetPath = folder ? folder.dataset.path : '';
+    // Prevent dragging into itself or its own children
+    if (targetPath === sourcePath || targetPath.startsWith(sourcePath + '/')) return;
+    
+    await moveItem(sourcePath, targetPath);
+  }
+
+  async function moveItem(sourcePath, targetFolder) {
+    const name = sourcePath.split('/').pop();
+    const isNote = sourcePath.endsWith('.md');
+    const destPath = targetFolder ? \`\${targetFolder}/\${name}\` : name;
+    
+    if (sourcePath === destPath) return; // Didn't move
+    
+    try {
+      const type = document.querySelector(\`[data-path="\${sourcePath}"]\`)?.classList.contains('tree-folder-header') ? 'folder' : 'note';
+      const res = await fetch('/api/rename', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldPath: sourcePath, newPath: destPath, type })
+      });
+      if (!res.ok) {
+        if (typeof toast === 'function') toast('Move failed', 'error');
+        return;
+      }
+      if (typeof toast === 'function') toast('Moved successfully', 'success');
+      // No need to loadTree manually since SSE will trigger it
+    } catch (e) {
+      if (typeof toast === 'function') toast('Move failed', 'error');
+    }
   }
 
 })();
