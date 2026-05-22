@@ -306,6 +306,7 @@ function buildFolderNode(folder) {
   const noteCount = countNotes(folder);
   const header = document.createElement('div');
   header.className = 'tree-folder-header';
+  if (folder.path) header.dataset.path = folder.path;
   header.innerHTML = `
     <span class="drag-grip" style="display:none; cursor:grab; opacity:0; transition:opacity 0.2s; margin-left:-4px; margin-right:4px; align-items:center"><i data-lucide="grip-vertical" style="width:12px;height:12px;"></i></span>
     <span class="folder-chevron open"><i data-lucide="chevron-right" style="width:12px;height:12px;"></i></span>
