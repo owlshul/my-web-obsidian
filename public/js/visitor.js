@@ -36,7 +36,8 @@ document.addEventListener('DOMContentLoaded', () => {
   loadTree().then(() => {
     const pathMatch = window.location.pathname.match(/^\/note\/(.+)$/);
     if (pathMatch) {
-      const notePath = pathMatch[1] + (pathMatch[1].endsWith('.md') ? '' : '.md');
+      const decoded = decodeURIComponent(pathMatch[1]);
+      const notePath = decoded + (decoded.endsWith('.md') ? '' : '.md');
       openNote(notePath);
     }
   });
@@ -244,8 +245,10 @@ document.addEventListener('DOMContentLoaded', () => {
 
   window.addEventListener('popstate', () => {
     const m = window.location.pathname.match(/^\/note\/(.+)$/);
-    if (m) openNote(m[1] + (m[1].endsWith('.md') ? '' : '.md'));
-    else showWelcome();
+    if (m) {
+      const decoded = decodeURIComponent(m[1]);
+      openNote(decoded + (decoded.endsWith('.md') ? '' : '.md'));
+    } else showWelcome();
   });
 });
 
