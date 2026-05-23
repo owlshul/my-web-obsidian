@@ -17,6 +17,8 @@
   let editorTextarea = null;
   let focusTitleOnEdit = false;
   let reloadTimeout = null;
+  let dbWriteLock = false;
+  let dbWriteTimeout = null;
 
   function reloadTreeDelayed(delay = 350) {
     clearTimeout(reloadTimeout);
@@ -26,6 +28,18 @@
       }
     }, delay);
   }
+
+  function triggerDbWriteSync() {
+    dbWriteLock = true;
+    clearTimeout(dbWriteTimeout);
+    dbWriteTimeout = setTimeout(() => {
+      dbWriteLock = false;
+      if (typeof window.loadTree === 'function') {
+        window.loadTree();
+      }
+    }, 2000);
+  }
+
 
 
 
@@ -141,7 +155,7 @@
     const _origLoadTree = window.loadTree;
     window.loadTree = async function () {
       await _origLoadTree();
-      tagFolderPaths(window.tree || [], document.getElementById('fileTree'));
+      tagFolderPaths(window.tree || tree || [], document.getElementById('fileTree'));
     };
 
     // Right-click context menus
@@ -165,7 +179,9 @@
     if (!window.adminEventSource) {
       window.adminEventSource = new EventSource('/api/events');
       window.adminEventSource.addEventListener('update', () => {
-        reloadTreeDelayed(350);
+        if (!dbWriteLock) {
+          reloadTreeDelayed(350);
+        }
       });
     }
 
@@ -466,7 +482,7 @@
       isDirty = false;
       const t = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
       setStatus(`✓ Saved ${t}`, 'saved');
-      reloadTreeDelayed(350);
+      triggerDbWriteSync();
       setTimeout(() => { if (!isDirty) setStatus('', ''); }, 3000);
     } catch {
       setStatus('⚠ Save failed', '');
@@ -609,10 +625,10 @@
           headers: { 'Content-Type': 'application/json' },
         });
         if (!res.ok) throw new Error();
-        reloadTreeDelayed(350);
+        triggerDbWriteSync();
       } catch (e) {
         if (typeof toast === 'function') toast('Delete failed', 'error');
-        reloadTreeDelayed(350);
+        triggerDbWriteSync();
       }
     }, true);
   }
@@ -692,7 +708,7 @@
             if (!isEditMode) toggleEditMode();
           }
 
-          reloadTreeDelayed(350);
+          triggerDbWriteSync();
         } catch (err) {
           console.error(err);
           if (noteNode) noteNode.remove();
@@ -752,7 +768,7 @@
         if (!isEditMode) toggleEditMode();
       }
 
-      reloadTreeDelayed(350);
+      triggerDbWriteSync();
     } catch (err) {
       console.error(err);
       if (noteNode) noteNode.remove();
@@ -801,7 +817,7 @@
       if (displayTitle) displayTitle.childNodes[0].nodeValue = newTitle + ' ';
 
       toast('Renamed note file!', 'success');
-      reloadTreeDelayed(350);
+      triggerDbWriteSync();
     } catch (err) {
       console.error(err);
       toast('Rename failed', 'error');
@@ -852,7 +868,7 @@
         });
         if (!res.ok) { folderNode.remove(); toast('Failed to create folder', 'error'); return; }
         toast('Folder created!', 'success');
-        reloadTreeDelayed(350);
+        triggerDbWriteSync();
       }
     );
     setTimeout(() => { const i = document.getElementById('mFolderName'); i?.focus(); i?.select(); }, 60);
@@ -915,11 +931,11 @@
         });
         if (!res.ok) { 
           toast('Rename failed', 'error'); 
-          reloadTreeDelayed(350);
+          triggerDbWriteSync();
           return; 
         }
         toast('Renamed!', 'success');
-        reloadTreeDelayed(350);
+        triggerDbWriteSync();
       }
     );
     setTimeout(() => { const i = document.getElementById('mNewName'); i?.focus(); i?.select(); }, 60);
@@ -945,7 +961,7 @@
         const url = isNote ? '/api/note/' + encodedPath : '/api/folder/' + encodedPath;
         
         const res = await fetch(url, { method: 'DELETE' });
-        if (!res.ok) { toast('Delete failed', 'error'); reloadTreeDelayed(350); return; }
+        if (!res.ok) { toast('Delete failed', 'error'); triggerDbWriteSync(); return; }
         toast('Deleted', 'info');
         // If we deleted the currently open note, exit edit mode and show welcome
         if (isNote && currentNote?.path === (itemPath.endsWith('.md') ? itemPath : itemPath + '.md')) {
@@ -953,7 +969,7 @@
           if (isEditMode) { isEditMode = false; refreshToggleBtn(); exitEditMode(); }
           if (typeof showWelcome === 'function') showWelcome();
         }
-        reloadTreeDelayed(350);
+        triggerDbWriteSync();
       },
       true /* danger */
     );
@@ -1134,13 +1150,13 @@
       });
       if (!res.ok) {
         if (typeof toast === 'function') toast('Move failed', 'error');
-        reloadTreeDelayed(350);
+        triggerDbWriteSync();
         return;
       }
       // Success, SSE handles tree update
     } catch (e) {
       if (typeof toast === 'function') toast('Move failed', 'error');
-      reloadTreeDelayed(350);
+      triggerDbWriteSync();
     }
   }
 
