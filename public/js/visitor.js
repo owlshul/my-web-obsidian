@@ -269,15 +269,36 @@ function applyTheme() {
 }
 
 // ─── Tree Loading ─────────────────────────────────────────────────────────────
+let isTreeLoading = false;
+let treeNeedsReload = false;
+
 async function loadTree() {
+  if (isTreeLoading) {
+    treeNeedsReload = true;
+    return;
+  }
+  isTreeLoading = true;
   try {
     const res = await fetch('/api/tree?t=' + Date.now(), { cache: 'no-store' });
-    tree = await res.json();
-    renderTree(tree);
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        tree = data;
+        renderTree(tree);
+      }
+    } else {
+      throw new Error('Failed response');
+    }
   } catch {
     document.getElementById('fileTree').innerHTML =
       '<div class="tree-empty"><div style="display:flex;justify-content:center;margin-bottom:.5rem;color:var(--text-faint)"><i data-lucide="alert-triangle" style="width:32px;height:32px;"></i></div>Failed to load notes</div>';
     if (window.lucide) window.lucide.createIcons();
+  } finally {
+    isTreeLoading = false;
+    if (treeNeedsReload) {
+      treeNeedsReload = false;
+      loadTree();
+    }
   }
 }
 

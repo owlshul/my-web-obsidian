@@ -83,10 +83,33 @@ function updateKbdHint() {
 }
 
 // ─── Tree ────────────────────────────────────────────────────────────────────
+let isTreeLoading = false;
+let treeNeedsReload = false;
+
 async function loadTree() {
-  const res = await fetch('/api/tree');
-  tree = await res.json();
-  renderTree();
+  if (isTreeLoading) {
+    treeNeedsReload = true;
+    return;
+  }
+  isTreeLoading = true;
+  try {
+    const res = await fetch('/api/tree?t=' + Date.now(), { cache: 'no-store' });
+    if (res.ok) {
+      const data = await res.json();
+      if (Array.isArray(data)) {
+        tree = data;
+        renderTree();
+      }
+    }
+  } catch (err) {
+    console.error('Tree load error:', err);
+  } finally {
+    isTreeLoading = false;
+    if (treeNeedsReload) {
+      treeNeedsReload = false;
+      loadTree();
+    }
+  }
 }
 
 function renderTree() {
