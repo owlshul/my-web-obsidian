@@ -641,31 +641,54 @@
         const notePath = folder ? `${folder}/${rawName}` : rawName;
         closeModal();
 
-        // POST to server first
-        const res = await fetch('/api/note', {
-          method: 'POST',
-          headers: { 'Content-Type': 'application/json' },
-          body: JSON.stringify({ path: notePath, title: rawName, visibility: vis, content: '' }),
-        });
-        if (!res.ok) { 
-          toast('Failed to create note', 'error'); 
-          return; 
-        }
-        toast('Note created!', 'success');
-
-        if (typeof window.loadTree === 'function') {
-          await window.loadTree();
-        }
-
-        // Now it's safe to open (server confirmed it exists)
-        currentNote = { path: notePath + '.md', title: rawName, visibility: vis, content: '' };
-        if (typeof window.openNote === 'function') {
-          await window.openNote(notePath + '.md');
-          if (!isEditMode) toggleEditMode();
+        // OPTIMISTIC UI: Add functional note to tree instantly
+        const noteNode = typeof buildNoteNode === 'function'
+          ? buildNoteNode({ path: notePath + '.md', title: rawName, name: rawName, type: 'note' })
+          : null;
+        if (noteNode) {
+          if (window.lucide) window.lucide.createIcons({ root: noteNode });
+          if (isAdmin) noteNode.draggable = true;
+          let targetContainer;
+          if (folder) {
+            const folderHeader = document.querySelector(`[data-path="${folder.replace(/"/g, '\\"')}"]`);
+            targetContainer = folderHeader?.nextElementSibling;
+            if (targetContainer) {
+              targetContainer.style.display = '';
+              folderHeader?.querySelector('.folder-chevron')?.classList.add('open');
+            }
+          }
+          if (!targetContainer) targetContainer = document.getElementById('fileTree');
+          insertSorted(targetContainer, noteNode, rawName, 'note');
+          flashElement(noteNode);
         }
 
-        const newEl = document.querySelector(`[data-path="${notePath.replace(/"/g, '\\"')}.md"]`);
-        if (newEl) flashElement(newEl);
+        try {
+          const res = await fetch('/api/note', {
+            method: 'POST',
+            headers: { 'Content-Type': 'application/json' },
+            body: JSON.stringify({ path: notePath, title: rawName, visibility: vis, content: '' }),
+          });
+          if (!res.ok) { 
+            if (noteNode) noteNode.remove();
+            toast('Failed to create note', 'error'); 
+            return; 
+          }
+          toast('Note created!', 'success');
+
+          currentNote = { path: notePath + '.md', title: rawName, visibility: vis, content: '' };
+          if (typeof window.openNote === 'function') {
+            await window.openNote(notePath + '.md');
+            if (!isEditMode) toggleEditMode();
+          }
+
+          if (typeof window.loadTree === 'function') {
+            window.loadTree();
+          }
+        } catch (err) {
+          console.error(err);
+          if (noteNode) noteNode.remove();
+          toast('Failed to create note', 'error');
+        }
       }
     );
     setTimeout(() => document.getElementById('mName')?.focus(), 60);
@@ -687,6 +710,18 @@
     const notePath = rawName;
     const vis = 'private';
 
+    // OPTIMISTIC UI: Add note node to tree instantly
+    const noteNode = typeof buildNoteNode === 'function'
+      ? buildNoteNode({ path: notePath + '.md', title: rawName, name: rawName, type: 'note' })
+      : null;
+    if (noteNode) {
+      if (window.lucide) window.lucide.createIcons({ root: noteNode });
+      if (isAdmin) noteNode.draggable = true;
+      const ft = document.getElementById('fileTree');
+      insertSorted(ft, noteNode, rawName, 'note');
+      flashElement(noteNode);
+    }
+
     try {
       const res = await fetch('/api/note', {
         method: 'POST',
@@ -694,14 +729,11 @@
         body: JSON.stringify({ path: notePath, title: rawName, visibility: vis, content: '' }),
       });
       if (!res.ok) { 
+        if (noteNode) noteNode.remove();
         toast('Failed to create note', 'error'); 
         return; 
       }
       toast('Note created!', 'success');
-
-      if (typeof window.loadTree === 'function') {
-        await window.loadTree();
-      }
 
       focusTitleOnEdit = true;
 
@@ -711,10 +743,12 @@
         if (!isEditMode) toggleEditMode();
       }
 
-      const newEl = document.querySelector(`[data-path="${notePath.replace(/"/g, '\\"')}.md"]`);
-      if (newEl) flashElement(newEl);
+      if (typeof window.loadTree === 'function') {
+        window.loadTree();
+      }
     } catch (err) {
       console.error(err);
+      if (noteNode) noteNode.remove();
       toast('Failed to create note', 'error');
     }
   }
