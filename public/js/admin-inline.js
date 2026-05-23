@@ -233,15 +233,13 @@
 
   function refreshToggleBtn() {
     const btn  = document.getElementById('previewToggleBtn');
-    const icon = btn?.querySelector('i');
     if (!btn) return;
     if (isEditMode) {
-      // Showing edit mode → button lets you go back to reading
-      if (icon) icon.setAttribute('data-lucide', 'glasses');
+      btn.innerHTML = '<i data-lucide="book-open" style="width:15px;height:15px;"></i>';
       btn.title = 'Switch to Reading Mode';
       btn.classList.add('btn-active-mode');
     } else {
-      if (icon) icon.setAttribute('data-lucide', 'pen');
+      btn.innerHTML = '<i data-lucide="pencil" style="width:15px;height:15px;"></i>';
       btn.title = 'Switch to Writing Mode';
       btn.classList.remove('btn-active-mode');
     }
@@ -610,6 +608,28 @@
         }
         toast('Note created!', 'success');
 
+        // INSTANT: inject note node into tree in sorted position
+        const noteNode = typeof buildNoteNode === 'function'
+          ? buildNoteNode({ path: notePath + '.md', title: rawName, name: rawName, type: 'note' })
+          : null;
+        if (noteNode) {
+          if (window.lucide) window.lucide.createIcons({ root: noteNode });
+          if (isAdmin) noteNode.draggable = true;
+          let targetContainer;
+          if (folder) {
+            const folderHeader = document.querySelector(`[data-path="${folder.replace(/"/g, '\\"')}"]`);
+            targetContainer = folderHeader?.nextElementSibling;
+            // Open folder if collapsed
+            if (targetContainer) {
+              targetContainer.style.display = '';
+              folderHeader?.querySelector('.folder-chevron')?.classList.add('open');
+            }
+          }
+          if (!targetContainer) targetContainer = document.getElementById('fileTree');
+          insertSorted(targetContainer, noteNode, rawName, 'note');
+          flashElement(noteNode);
+        }
+
         // Now it's safe to open (server confirmed it exists)
         currentNote = { path: notePath + '.md', title: rawName, visibility: vis, content: '' };
         if (typeof window.openNote === 'function') {
@@ -778,6 +798,32 @@
       .replace(/>/g, '&gt;').replace(/"/g, '&quot;');
   }
 
+  /* ── Insert sorted alphabetically (folders first, then notes) ─────────── */
+  function insertSorted(container, newNode, itemName, itemType) {
+    const children = Array.from(container.children);
+    // Find the right insertion point
+    for (const child of children) {
+      const childIsFolder = child.classList.contains('tree-folder');
+      const childIsNote   = child.classList.contains('tree-note');
+      const childName     = (child.querySelector('.folder-name') || child.querySelector('.note-title'))?.textContent?.trim() || '';
+      // Folders before notes
+      if (itemType === 'note' && childIsFolder) continue;
+      if (itemType === 'folder' && childIsNote) { container.insertBefore(newNode, child); return; }
+      if (itemName.toLowerCase() < childName.toLowerCase()) {
+        container.insertBefore(newNode, child);
+        return;
+      }
+    }
+    container.appendChild(newNode);
+  }
+
+  /* ── Flash highlight on a just-moved element ───────────────────────────── */
+  function flashElement(el) {
+    if (!el) return;
+    el.classList.add('drop-flash');
+    setTimeout(() => el.classList.remove('drop-flash'), 900);
+  }
+
   /* ── Drag and Drop ──────────────────────────────────────────────────────── */
   function setupDragAndDrop() {
     const ft = document.getElementById('fileTree');
@@ -883,8 +929,7 @@
            : document.querySelector(`[data-path="${targetFolder.replace(/"/g, '\\"')}"]`)?.nextElementSibling;
            
         if (targetChildren && (targetChildren.classList.contains('tree-folder-children') || targetChildren.id === 'fileTree')) {
-          targetChildren.appendChild(actualNode);
-          el.dataset.path = destPath; // Prevent double-triggering
+          el.dataset.path = destPath; // update before sort check
           
           // If folder, cascade update all children's data-path attributes
           if (type === 'folder') {
@@ -896,6 +941,10 @@
               }
             });
           }
+
+          // Insert in sorted position instead of appending at end
+          insertSorted(targetChildren, actualNode, name, type);
+          flashElement(actualNode);
         }
       }
     }

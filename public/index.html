@@ -22,6 +22,22 @@
     .tree-folder-header:hover .drag-grip, .tree-note:hover .drag-grip {
       opacity: 0.5 !important;
     }
+    /* Flash highlight after a drop or new item */
+    @keyframes dropFlash {
+      0%   { background: hsla(210, 80%, 55%, 0.28); }
+      60%  { background: hsla(210, 80%, 55%, 0.12); }
+      100% { background: transparent; }
+    }
+    .drop-flash {
+      animation: dropFlash 0.9s ease forwards;
+      border-radius: var(--radius-sm);
+    }
+    /* Active mode button (write mode on) */
+    .btn-active-mode {
+      color: var(--accent) !important;
+      background: hsla(210, 80%, 55%, 0.12) !important;
+      border-radius: var(--radius-sm);
+    }
   </style>
 </head>
 <body class="theme-light">
@@ -248,8 +264,8 @@ ab padhl lete hain bhai.
 
 <!-- Marked.js for perfect Markdown rendering -->
 <script src="https://cdn.jsdelivr.net/npm/marked/marked.min.js"></script>
-<script src="/js/highlights.js?v=6"></script>
-<script src="/js/visitor.js?v=6"></script>
-<script src="/js/admin-inline.js?v=6"></script>
+<script src="/js/highlights.js?v=7"></script>
+<script src="/js/visitor.js?v=7"></script>
+<script src="/js/admin-inline.js?v=7"></script>
 </body>
 </html>
