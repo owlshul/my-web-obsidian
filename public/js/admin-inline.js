@@ -15,6 +15,8 @@
   let saveTimeout    = null;
   let isEditMode     = false;
   let editorTextarea = null;
+  let focusTitleOnEdit = false;
+
 
   /* ── Boot ──────────────────────────────────────────────────────────────── */
   document.addEventListener('DOMContentLoaded', async () => {
@@ -210,7 +212,20 @@
         }
         updateEditorHeader(note);
         setStatus('');
+        if (focusTitleOnEdit) {
+          focusTitleOnEdit = false;
+          setTimeout(() => {
+            const ti = document.getElementById('editorTitleInput');
+            if (ti) {
+              ti.focus();
+              ti.select();
+            }
+          }, 100);
+        } else {
+          setTimeout(() => editorTextarea?.focus(), 60);
+        }
       }
+
     } catch (_) {}
   }
 
@@ -265,7 +280,19 @@
       updateEditorHeader(currentNote);
     }
     setStatus('');
-    setTimeout(() => editorTextarea?.focus(), 60);
+    if (focusTitleOnEdit) {
+      focusTitleOnEdit = false;
+      setTimeout(() => {
+        const ti = document.getElementById('editorTitleInput');
+        if (ti) {
+          ti.focus();
+          ti.select();
+        }
+      }, 100);
+    } else {
+      setTimeout(() => editorTextarea?.focus(), 60);
+    }
+
   }
 
   function exitEditMode() {
@@ -308,6 +335,16 @@
       isDirty = true;
       scheduleSave();
     });
+    titleInput.addEventListener('blur', () => {
+      handleTitleRename();
+    });
+    titleInput.addEventListener('keydown', e => {
+      if (e.key === 'Enter') {
+        e.preventDefault();
+        titleInput.blur();
+      }
+    });
+
 
     const visBtn = document.createElement('button');
     visBtn.id = 'editorVisBtn';
@@ -458,8 +495,15 @@
           { icon: 'pen-line',    label: 'Rename',          cb: () => showRenameModal('folder', path, name) },
           { icon: 'trash-2',     label: 'Delete Folder',   cb: () => confirmDelete('folder', path, name), danger: true },
         ]);
+      } else {
+        e.preventDefault();
+        showCtxMenu(e, [
+          { icon: 'file-plus',   label: 'New Note',   cb: () => quickCreateNote() },
+          { icon: 'folder-plus', label: 'New Folder', cb: () => showNewFolderModal() },
+        ]);
       }
     });
+
 
     document.addEventListener('click', closeCtx);
     document.addEventListener('keydown', e => { if (e.key === 'Escape') closeCtx(); });
@@ -608,26 +652,8 @@
         }
         toast('Note created!', 'success');
 
-        // INSTANT: inject note node into tree in sorted position
-        const noteNode = typeof buildNoteNode === 'function'
-          ? buildNoteNode({ path: notePath + '.md', title: rawName, name: rawName, type: 'note' })
-          : null;
-        if (noteNode) {
-          if (window.lucide) window.lucide.createIcons({ root: noteNode });
-          if (isAdmin) noteNode.draggable = true;
-          let targetContainer;
-          if (folder) {
-            const folderHeader = document.querySelector(`[data-path="${folder.replace(/"/g, '\\"')}"]`);
-            targetContainer = folderHeader?.nextElementSibling;
-            // Open folder if collapsed
-            if (targetContainer) {
-              targetContainer.style.display = '';
-              folderHeader?.querySelector('.folder-chevron')?.classList.add('open');
-            }
-          }
-          if (!targetContainer) targetContainer = document.getElementById('fileTree');
-          insertSorted(targetContainer, noteNode, rawName, 'note');
-          flashElement(noteNode);
+        if (typeof loadTree === 'function') {
+          await loadTree();
         }
 
         // Now it's safe to open (server confirmed it exists)
@@ -636,11 +662,111 @@
           await window.openNote(notePath + '.md');
           if (!isEditMode) toggleEditMode();
         }
-        if (typeof loadTree === 'function') loadTree();
+
+        const newEl = document.querySelector(`[data-path="${notePath.replace(/"/g, '\\"')}.md"]`);
+        if (newEl) flashElement(newEl);
       }
     );
     setTimeout(() => document.getElementById('mName')?.focus(), 60);
   }
+
+  function getUniqueUntitledPath() {
+    let base = 'Untitled';
+    let path = base + '.md';
+    let count = 1;
+    while (document.querySelector(`[data-path="${path.replace(/"/g, '\\"')}"]`)) {
+      path = `${base} ${count}.md`;
+      count++;
+    }
+    return path.replace(/\.md$/, '');
+  }
+
+  async function quickCreateNote() {
+    const rawName = getUniqueUntitledPath();
+    const notePath = rawName;
+    const vis = 'private';
+
+    try {
+      const res = await fetch('/api/note', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ path: notePath, title: rawName, visibility: vis, content: '' }),
+      });
+      if (!res.ok) { 
+        toast('Failed to create note', 'error'); 
+        return; 
+      }
+      toast('Note created!', 'success');
+
+      if (typeof loadTree === 'function') {
+        await loadTree();
+      }
+
+      focusTitleOnEdit = true;
+
+      currentNote = { path: notePath + '.md', title: rawName, visibility: vis, content: '' };
+      if (typeof window.openNote === 'function') {
+        await window.openNote(notePath + '.md');
+        if (!isEditMode) toggleEditMode();
+      }
+
+      const newEl = document.querySelector(`[data-path="${notePath.replace(/"/g, '\\"')}.md"]`);
+      if (newEl) flashElement(newEl);
+    } catch (err) {
+      console.error(err);
+      toast('Failed to create note', 'error');
+    }
+  }
+
+  async function handleTitleRename() {
+    if (!currentNote) return;
+    const oldTitle = currentNote.title || '';
+    const ti = document.getElementById('editorTitleInput');
+    const newTitle = ti ? ti.value.trim() : '';
+    if (!newTitle || newTitle === oldTitle) return;
+
+    const oldPath = currentNote.path;
+    const parts = oldPath.split('/');
+    const newPathName = newTitle.endsWith('.md') ? newTitle : (newTitle + '.md');
+    parts[parts.length - 1] = newPathName;
+    const newPath = parts.join('/');
+
+    if (newPath === oldPath) {
+      if (newTitle === oldTitle) return;
+    }
+
+    try {
+      const res = await fetch('/api/rename', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ oldPath, newPath, type: 'note' }),
+      });
+      if (!res.ok) {
+        const errData = await res.json().catch(() => ({}));
+        toast(errData.error || 'Rename failed', 'error');
+        if (ti) ti.value = oldTitle;
+        return;
+      }
+
+      currentNote.path = newPath;
+      currentNote.title = newTitle;
+      if (typeof currentPath !== 'undefined') currentPath = newPath;
+
+      const urlPath = '/note/' + newPath.replace(/\.md$/, '');
+      window.history.replaceState({}, '', urlPath);
+
+      const displayTitle = document.querySelector('.note-title-display');
+      if (displayTitle) displayTitle.childNodes[0].nodeValue = newTitle + ' ';
+
+      toast('Renamed note file!', 'success');
+      if (typeof loadTree === 'function') await loadTree();
+    } catch (err) {
+      console.error(err);
+      toast('Rename failed', 'error');
+      if (ti) ti.value = oldTitle;
+    }
+  }
+
 
   function showNewFolderModal(parentPath) {
     showModal('New Folder', `
