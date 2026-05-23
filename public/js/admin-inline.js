@@ -178,8 +178,9 @@
     if (!nodes || !container) return;
     let fi = 0;
     const folderDivs = Array.from(container.children).filter(
-      el => el.classList.contains('tree-folder') || el.classList.contains('slide-in')
+      el => el.classList.contains('tree-folder')
     );
+
     nodes.forEach(node => {
       if (node.type !== 'folder') return;
       const el = folderDivs[fi++];
@@ -454,7 +455,7 @@
       isDirty = false;
       const t = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
       setStatus(`✓ Saved ${t}`, 'saved');
-      if (typeof loadTree === 'function') loadTree();
+      if (typeof window.loadTree === 'function') window.loadTree();
       setTimeout(() => { if (!isDirty) setStatus('', ''); }, 3000);
     } catch {
       setStatus('⚠ Save failed', '');
@@ -597,10 +598,10 @@
           headers: { 'Content-Type': 'application/json' },
         });
         if (!res.ok) throw new Error();
-        if (typeof loadTree === 'function') await loadTree();
+        if (typeof window.loadTree === 'function') await window.loadTree();
       } catch (e) {
         if (typeof toast === 'function') toast('Delete failed', 'error');
-        if (typeof loadTree === 'function') loadTree();
+        if (typeof window.loadTree === 'function') window.loadTree();
       }
     }, true);
   }
@@ -652,8 +653,8 @@
         }
         toast('Note created!', 'success');
 
-        if (typeof loadTree === 'function') {
-          await loadTree();
+        if (typeof window.loadTree === 'function') {
+          await window.loadTree();
         }
 
         // Now it's safe to open (server confirmed it exists)
@@ -698,8 +699,8 @@
       }
       toast('Note created!', 'success');
 
-      if (typeof loadTree === 'function') {
-        await loadTree();
+      if (typeof window.loadTree === 'function') {
+        await window.loadTree();
       }
 
       focusTitleOnEdit = true;
@@ -759,7 +760,7 @@
       if (displayTitle) displayTitle.childNodes[0].nodeValue = newTitle + ' ';
 
       toast('Renamed note file!', 'success');
-      if (typeof loadTree === 'function') await loadTree();
+      if (typeof window.loadTree === 'function') await window.loadTree();
     } catch (err) {
       console.error(err);
       toast('Rename failed', 'error');
@@ -810,7 +811,7 @@
         });
         if (!res.ok) { folderNode.remove(); toast('Failed to create folder', 'error'); return; }
         toast('Folder created!', 'success');
-        if (typeof loadTree === 'function') loadTree();
+        if (typeof window.loadTree === 'function') window.loadTree();
       }
     );
     setTimeout(() => { const i = document.getElementById('mFolderName'); i?.focus(); i?.select(); }, 60);
@@ -873,11 +874,11 @@
         });
         if (!res.ok) { 
           toast('Rename failed', 'error'); 
-          if (typeof loadTree === 'function') loadTree();
+          if (typeof window.loadTree === 'function') window.loadTree();
           return; 
         }
         toast('Renamed!', 'success');
-        if (typeof loadTree === 'function') loadTree();
+        if (typeof window.loadTree === 'function') window.loadTree();
       }
     );
     setTimeout(() => { const i = document.getElementById('mNewName'); i?.focus(); i?.select(); }, 60);
@@ -903,7 +904,7 @@
         const url = isNote ? '/api/note/' + encodedPath : '/api/folder/' + encodedPath;
         
         const res = await fetch(url, { method: 'DELETE' });
-        if (!res.ok) { toast('Delete failed', 'error'); if (typeof loadTree === 'function') loadTree(); return; }
+        if (!res.ok) { toast('Delete failed', 'error'); if (typeof window.loadTree === 'function') window.loadTree(); return; }
         toast('Deleted', 'info');
         // If we deleted the currently open note, exit edit mode and show welcome
         if (isNote && currentNote?.path === (itemPath.endsWith('.md') ? itemPath : itemPath + '.md')) {
@@ -911,7 +912,7 @@
           if (isEditMode) { isEditMode = false; refreshToggleBtn(); exitEditMode(); }
           if (typeof showWelcome === 'function') showWelcome();
         }
-        if (typeof loadTree === 'function') loadTree();
+        if (typeof window.loadTree === 'function') window.loadTree();
       },
       true /* danger */
     );
@@ -1092,13 +1093,13 @@
       });
       if (!res.ok) {
         if (typeof toast === 'function') toast('Move failed', 'error');
-        if (typeof loadTree === 'function') loadTree();
+        if (typeof window.loadTree === 'function') window.loadTree();
         return;
       }
       // Success, SSE handles tree update
     } catch (e) {
       if (typeof toast === 'function') toast('Move failed', 'error');
-      if (typeof loadTree === 'function') loadTree();
+      if (typeof window.loadTree === 'function') window.loadTree();
     }
   }
 
