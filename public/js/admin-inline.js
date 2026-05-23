@@ -114,21 +114,7 @@
       }
     });
 
-    // Patch fetch to avoid 404s when optimistically loading a recently moved note
-    const _origFetch = window.fetch;
-    window.fetch = async function(...args) {
-      const url = typeof args[0] === 'string' ? args[0] : (args[0] && args[0].url);
-      if (url && url.startsWith('/api/note/')) {
-        const fetchPath = decodeURIComponent(url.replace('/api/note/', ''));
-        if (currentNote && currentNote.path === fetchPath && currentNote.content !== undefined) {
-          return new Response(JSON.stringify(currentNote), {
-            status: 200,
-            headers: { 'Content-Type': 'application/json' }
-          });
-        }
-      }
-      return _origFetch.apply(this, args);
-    };
+    // (No fetch intercept — let all requests hit the real server)
 
     // Override visitor's openNote so admin gets editor state too
     const _origOpenNote = window.openNote;
@@ -612,14 +598,7 @@
         const notePath = folder ? `${folder}/${rawName}` : rawName;
         closeModal();
 
-        // OPTIMISTIC UI: Pre-fill currentNote and open instantly
-        currentNote = { path: notePath + '.md', title: rawName, visibility: vis, content: '' };
-        if (typeof window.openNote === 'function') {
-          window.openNote(notePath + '.md').then(() => {
-            if (!isEditMode) toggleEditMode();
-          });
-        }
-
+        // POST to server first
         const res = await fetch('/api/note', {
           method: 'POST',
           headers: { 'Content-Type': 'application/json' },
@@ -627,10 +606,16 @@
         });
         if (!res.ok) { 
           toast('Failed to create note', 'error'); 
-          if (typeof loadTree === 'function') loadTree();
           return; 
         }
         toast('Note created!', 'success');
+
+        // Now it's safe to open (server confirmed it exists)
+        currentNote = { path: notePath + '.md', title: rawName, visibility: vis, content: '' };
+        if (typeof window.openNote === 'function') {
+          await window.openNote(notePath + '.md');
+          if (!isEditMode) toggleEditMode();
+        }
         if (typeof loadTree === 'function') loadTree();
       }
     );
