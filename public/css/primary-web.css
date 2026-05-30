@@ -18,20 +18,7 @@
 /* These values are taken directly from Primary's default-light/dark values   */
 
 :root {
-  /* ── Primary palette — Bauhaus R/B/Y ── */
-  --primary-red:    hsla(4,   72%, 55%, 1);   /* Folder 1 / graph tags */
-  --primary-orange: hsla(18,  69%, 50%, 1);   /* Folder 2 */
-  --primary-yellow: hsla(35,  90%, 40%, 1);   /* Folder 3 / star */
-  --primary-green:  hsla(160, 40%, 45%, 1);   /* Checkbox checked */
-  --primary-teal:   hsla(178, 29%, 45%, 1);   /* Info */
-  --primary-blue:   hsla(200, 64%, 37%, 1);   /* Folder 5 / graph nodes */
-  --primary-purple: hsla(275, 37%, 43%, 1);   /* Folder 6 */
-
-  /* ── Accent (interactive) — warm gold/yellow (darker for legibility) ── */
-  --accent:         hsla(35,  85%, 42%, 1);   /* graph unresolved, star */
-  --accent-hover:   hsla(35,  85%, 35%, 1);
-
-  /* ─────────────────── LIGHT THEME ─────────────────── */
+  /* ☀️ Light Mode (Nostalgic Magazine) */
   /* Backgrounds — warm paper, yellowing magazine pages */
   --bg-primary:     hsl(36,  30%, 95.5%);     /* reader-friendly warm paper off-white */
   --bg-secondary:   hsl(37,  30%, 91%);       /* warm off-white shadow/panels */
@@ -39,38 +26,56 @@
   --bg-sidebar:     hsl(34,  20%, 89%);       /* sidebar soft warm grey-cream */
   --bg-hover:       hsl(34,  24%, 81%);
   --bg-active:      hsla(43, 83%, 57%, 0.14);
+  
+  --text-normal:     #3D3935; /* Deep, muted brown-gray (vintage charcoal-brown) */
+  --text-muted:      #9D9894; /* Soft, neutral gray-brown / faded beige-gray */
+  --text-faint:      #C2BDB8;
+  
+  --border:          rgba(61, 57, 53, 0.12);
+  --border-strong:   rgba(61, 57, 53, 0.25);
+  
+  --accent:          #4D9CBC; /* Mid-century Scandinavian Blue */
+  --accent-hover:    #3b7b96;
+  --link:            #4D9CBC;
+  --link-hover:      #3b7b96;
+  
+  /* Bauhaus Primaries (Functional accents) */
+  --primary-blue:    #4D9CBC;
+  --primary-yellow:  #E8B840; /* Retro Golden Yellow */
+  --primary-orange:  #D67A3B; /* Soft Orange/Amber */
+  --primary-red:     #D34F4F; /* Functional Soft Red */
+  --primary-green:   #48A473; /* Desaturated Teal/Green */
+  --primary-teal:    #47959E; /* Teal */
+  --primary-purple:  #8b6090;
 
-  /* Text — warm dark brown tones */
-  --text-normal:    hsl(31,  23%, 22%);       /* primary reading text */
-  --text-muted:     hsl(34,  29%, 45%);       /* graph text: hsla(34,29%,60%) */
-  --text-faint:     hsl(34,  29%, 60%);       /* list marker: hsla(34,29%,60%) */
+  --code-bg:         #EBE9E4; /* Slightly darker beige than page */
+  --code-tx:         #3D3935;
 
-  /* Borders */
-  --border:         hsl(37,  38%, 83%);       /* graph line: hsla(37,38%,83%) */
-  --border-strong:  hsl(34,  29%, 70%);
-
-  /* Links */
-  --link:           hsl(200, 64%, 37%);       /* folder 5 blue */
-  --link-hover:     hsl(40,  98%, 36%);
-
-  /* Code */
-  --code-bg:        hsl(34,  25%, 91%);
-  --code-tx:        hsl(4,   72%, 45%);
+  /* Tag Pills */
+  --tag-bg:          rgba(61, 57, 53, 0.08);
+  --tag-tx:          #5a544f;
+  
+  /* Bold / Italic specific styles */
+  --bold-color:      #1c1a18; /* Near-black chocolate tone for heavy contrast */
+  --italic-color:    #D67A3B; /* Unique Soft Amber/Muted Orange tint */
+  --highlight-bg:    #E8B840; /* Golden Yellow bleeding into book paper */
+  --highlight-tx:    #3D3935;
 
   /* Special */
-  --shadow-sm:  0 1px 3px hsla(31,23%,20%,.08);
-  --shadow-md:  0 4px 12px hsla(31,23%,20%,.12);
-  --shadow-lg:  0 8px 28px hsla(31,23%,20%,.16);
-  --scrollbar:  hsl(34, 29%, 72%);
+  --shadow-sm:  0 1px 3px rgba(61, 57, 53, .08);
+  --shadow-md:  0 4px 12px rgba(61, 57, 53, .12);
+  --shadow-lg:  0 8px 28px rgba(61, 57, 53, .16);
+  --scrollbar:  rgba(61, 57, 53, .2);
 
   /* Solid backgrounds (was Glassmorphism) */
-  --glass-bg: hsl(36, 30%, 95.5%);
-  --glass-border: hsl(37, 38%, 83%);
+  --glass-bg: #F6F5F2;
+  --glass-border: rgba(61, 57, 53, 0.12);
   --glass-blur: 0px;
 }
 
 /* ─── Dark Theme ──────────────────────────────────────────────────────────── */
 body.theme-dark {
+  /* 🌙 Dark Mode (Warm Charcoal) */
   /* Backgrounds — warm dark, not cold */
   --bg-primary:     hsl(30,  10%, 11%);       /* warm very dark */
   --bg-secondary:   hsl(28,  12%, 14%);
@@ -78,45 +83,46 @@ body.theme-dark {
   --bg-sidebar:     hsl(29,  13%, 9%);
   --bg-hover:       hsl(28,  12%, 19%);
   --bg-active:      hsla(43, 83%, 57%, 0.10);
+  
+  --text-normal:     #D6D2CA; /* Soft, warm oatmeal/beige-white */
+  --text-muted:      #767069; /* Warm, desaturated slate */
+  --text-faint:      #565049;
+  
+  --border:          rgba(214, 210, 202, 0.12);
+  --border-strong:   rgba(214, 210, 202, 0.25);
+  
+  --accent:          #4D9CBC;
+  --accent-hover:    #67b6d7;
+  --link:            #4D9CBC;
+  --link-hover:      #67b6d7;
+  
+  --primary-blue:    #5baaca;
+  --primary-yellow:  #E8B840;
+  --primary-orange:  #DE9C53; /* Luminous Warm Gold/Tan for italics */
+  --primary-red:     #DF6B6B;
+  --primary-green:   #48A473;
+  --primary-teal:    #47959E;
+  --primary-purple:  #9d73a2;
 
-  /* Text */
-  --text-normal:    hsl(34,  39%, 74%);       /* graph focused: hsla(34,39%,74%) */
-  --text-muted:     hsl(28,  22%, 48%);
-  --text-faint:     hsl(28,  22%, 35%);
+  --code-bg:         #1F1C18; /* Deeper black-brown */
+  --code-tx:         #D6D2CA;
 
-  /* Borders */
-  --border:         hsl(28,  12%, 22%);
-  --border-strong:  hsl(28,  12%, 28%);
+  --tag-bg:          rgba(214, 210, 202, 0.1);
+  --tag-tx:          #B6B2AA;
+  
+  --bold-color:      #FFFFFF; /* Starkly bright against dark canvas */
+  --italic-color:    #DE9C53; /* Luminous Warm Gold/Tan */
+  --highlight-bg:    #C49833; /* Desaturated Vintage Ochre Yellow */
+  --highlight-tx:    #27241F;
 
-  /* Links */
-  --link:           hsl(194, 59%, 56%);       /* folder 5 dark: hsla(194,59%,56%) */
-  --link-hover:     hsla(42, 79%, 51%, 1);    /* folder 3 dark: hsla(42,79%,51%) */
-
-  /* Code */
-  --code-bg:        hsl(28,  12%, 17%);
-  --code-tx:        hsl(4,   88%, 61%);       /* folder 1 dark: hsla(4,88%,61%) */
-
-  /* Accent override for dark */
-  --accent:         hsla(42,  79%, 51%, 1);
-  --accent-hover:   hsla(43,  83%, 57%, 1);
-
-  /* Primary accent colors — dark variants */
-  --primary-red:    hsla(4,   88%, 61%, 1);
-  --primary-orange: hsla(24,  84%, 50%, 1);
-  --primary-yellow: hsla(42,  79%, 51%, 1);
-  --primary-green:  hsla(160, 50%, 55%, 1);
-  --primary-teal:   hsla(178, 31%, 41%, 1);
-  --primary-blue:   hsla(194, 59%, 56%, 1);
-  --primary-purple: hsla(242, 52%, 69%, 1);
-
-  --shadow-sm:  0 1px 3px hsla(0,0%,0%,.25);
-  --shadow-md:  0 4px 12px hsla(0,0%,0%,.35);
-  --shadow-lg:  0 8px 28px hsla(0,0%,0%,.45);
-  --scrollbar:  hsl(28, 12%, 28%);
+  --shadow-sm:  0 1px 3px rgba(0,0,0,.25);
+  --shadow-md:  0 4px 12px rgba(0,0,0,.35);
+  --shadow-lg:  0 8px 28px rgba(0,0,0,.45);
+  --scrollbar:  rgba(214, 210, 202, .2);
 
   /* Solid backgrounds (was Glassmorphism Dark) */
-  --glass-bg: hsl(30, 10%, 11%);
-  --glass-border: hsl(28, 12%, 22%);
+  --glass-bg: #27241F;
+  --glass-border: rgba(214, 210, 202, 0.12);
 }
 
 /* ─── Layout Tokens ──────────────────────────────────────────────────────── */
@@ -133,10 +139,10 @@ body.theme-dark {
   --font-heading: 'Playfair Display', Georgia, serif;
   /* Cascadia Code is loaded from /theme.css (base64 @font-face) */
   --font-mono:    'Cascadia Code', 'JetBrains Mono', 'Fira Code', monospace;
-  /* Enable the same font features as in Obsidian's Primary theme */
-  --font-mono-features: "calt" on, "ss02", "ss19";
-
-  /* Serve the original Cascadia Code from theme.css */
+  /* Cascadia Code OpenType features (ligatures, slashed zero, etc.) */
+  --font-mono-features: "calt" on, "ss02" on, "ss19" on;
+  /* Inter OpenType features — contextual alternates, disambiguators, refined punctuation */
+  --font-ui-features: "calt" on, "dlig" on, "case" on, "ss02" on, "ss03" on, "cv01" on, "cv05" on, "cv08" on;
 }
 
 /* ─── Reset ──────────────────────────────────────────────────────────────── */
@@ -150,6 +156,7 @@ html {
 
 body {
   font-family: var(--font-ui);
+  font-feature-settings: var(--font-ui-features);
   background: var(--bg-primary);
   color: var(--text-normal);
   line-height: 1.65;
@@ -181,26 +188,50 @@ a:focus-visible {
 /* ─── Base Typography ────────────────────────────────────────────────────── */
 h1, h2, h3, h4, h5, h6 {
   font-family: var(--font-ui);
-  line-height: 1.3;
-  font-weight: 700;
+  font-feature-settings: var(--font-ui-features);
+  line-height: 1.25;
   margin-top: 1.5rem;
 }
-h1 { font-size: 2rem; margin-bottom: 1rem; color: var(--primary-red); }
-h2 { font-size: 1.6rem; margin-bottom: .8rem; color: var(--primary-orange);
-     border-bottom: 1px solid var(--border); padding-bottom: .3rem; }
-h3 { font-size: 1.3rem; margin-bottom: .6rem; color: var(--primary-yellow); }
-h4 { font-size: 1.1rem; margin-bottom: .5rem; color: var(--primary-green); }
-h5 { font-size: 1rem; margin-bottom: .4rem; color: var(--primary-blue); }
-h6 { font-size: .95rem; margin-bottom: .4rem; color: var(--primary-purple); }
 
-p { margin-bottom: 1em; font-family: var(--font-ui); font-size: 1rem; line-height: 1.7; color: var(--text-normal); }
+/* Primary theme heading scale — faithful to Obsidian source */
+h1 { font-size: 1.8em;  font-weight: 800; margin-bottom: 1rem;  color: var(--primary-red); }
+h2 { font-size: 1.5em;  font-weight: 700; margin-bottom: .8rem; color: var(--primary-orange);
+     border-bottom: 1px solid var(--border); padding-bottom: .3rem; }
+h3 { font-size: 1.25em; font-weight: 600; margin-bottom: .6rem; color: var(--primary-yellow); }
+h4 { font-size: 1.1em;  font-weight: 600; margin-bottom: .5rem; color: var(--primary-green); }
+h5 { font-size: 1.0em;  font-weight: 500; margin-bottom: .4rem; color: var(--primary-blue);
+     font-style: italic; font-variant: small-caps; }
+h6 { font-size: 0.85em; font-weight: 500; margin-bottom: .4rem; color: var(--primary-purple);
+     font-style: italic; font-variant: small-caps; }
+
+p { margin-bottom: 1em; font-family: var(--font-ui); font-feature-settings: var(--font-ui-features); font-size: 1rem; line-height: 1.7; color: var(--text-normal); }
 
 a { color: var(--link); text-decoration: none; transition: color .12s; font-family: var(--font-ui); }
 a:hover { color: var(--link-hover); text-decoration: underline; }
 
-strong { font-weight: 700; color: var(--text-normal); }
-em { font-style: italic; color: var(--accent); }
+strong { font-weight: 800; color: var(--bold-color); }
+em { font-style: italic; color: var(--italic-color); }
 del { text-decoration: line-through; opacity: .65; }
+
+/* Tag Pills */
+.tag-pill, .cm-hashtag, a.tag {
+  display: inline-block;
+  background: var(--tag-bg);
+  color: var(--tag-tx);
+  padding: 0.15em 0.6em;
+  border-radius: 99px;
+  font-size: 0.85em;
+  font-family: var(--font-ui);
+  text-decoration: none;
+  font-weight: 500;
+  border: 1px solid var(--border);
+  transition: background 0.15s, border-color 0.15s;
+}
+.tag-pill:hover, .cm-hashtag:hover, a.tag:hover {
+  background: var(--bg-tertiary);
+  border-color: var(--border-strong);
+  text-decoration: none;
+}
 
 /* ─── Code ───────────────────────────────────────────────────────────────── */
 code {
@@ -210,8 +241,9 @@ code {
   color: var(--code-tx);
   padding: .15em .4em;
   border-radius: var(--radius-sm);
-  /* Cascadia Code ligature features (same as Obsidian's Primary theme) */
-  font-feature-settings: "calt" on, "ss02", "ss19";
+  border: 1px solid var(--border);
+  /* Cascadia Code: contextual ligatures, alt not-equal, slashed zero */
+  font-feature-settings: var(--font-mono-features);
 }
 
 pre {
@@ -229,13 +261,13 @@ pre code {
 
 /* ─── Blockquotes ────────────────────────────────────────────────────────── */
 blockquote {
-  border-left: 3px solid var(--accent);
+  border-left: 3px solid var(--accent); /* Scandinavian Blue */
   background: var(--bg-secondary);
   padding: .75rem 1rem;
   border-radius: 0 var(--radius-sm) var(--radius-sm) 0;
   color: var(--text-muted);
   margin-bottom: 1rem;
-  font-style: italic;
+  font-style: italic; /* Quote text slightly italicized */
   font-family: var(--font-text);
 }
 
@@ -292,7 +324,14 @@ body.theme-dark .callout-warning, body.theme-dark .callout-caution { background:
 body.theme-dark .callout-danger, body.theme-dark .callout-important, body.theme-dark .callout-error { background: hsla(4,88%,61%,.10); border-color: var(--primary-red); }
 
 /* ─── Lists ──────────────────────────────────────────────────────────────── */
-ul, ol { padding-left: 1.5rem; margin-bottom: 1rem; font-family: var(--font-text); }
+/* Use Inter (UI font) for lists — clean, readable, matches Primary theme intent */
+ul, ol {
+  padding-left: 1.5rem;
+  margin-bottom: 1rem;
+  font-family: var(--font-ui);
+  font-feature-settings: var(--font-ui-features);
+  line-height: 1.7;
+}
 li { margin-bottom: .3rem; }
 li > ul, li > ol { margin-top: .25rem; margin-bottom: 0; }
 

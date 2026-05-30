@@ -609,25 +609,24 @@ function updateOutline(container) {
     levelGroups[level].push(li);
   });
   
-  // ── Compute proper sibling groups ──
-  // Two headings of the same level are siblings only if NO heading of
-  // equal-or-lesser level appears between them in the DOM order.
+  // ── Compute proper sibling groups & vertical guide lines ──
+  // For each outline item, we need to draw vertical lines for any parent levels
+  // that are currently "passing through" (i.e. have siblings spanning across this item).
   const items = Array.from(outlineList.querySelectorAll('.outline-item'));
   const levels = items.map(li => parseInt(li.dataset.level));
   
   items.forEach((li, i) => {
     const level = levels[i];
-    // Look backward: is there a preceding item at same level with no equal-level break between?
+    
+    // 1. Mark this item's own sibling relationship (first, middle, last, only)
     let hasPrev = false;
     for (let j = i - 1; j >= 0; j--) {
-      if (levels[j] < level) break;      // a parent heading — stop, no sibling above
+      if (levels[j] < level) break;      // hit a parent, stop
       if (levels[j] === level) { hasPrev = true; break; }
-      // levels[j] > level means deeper heading — keep scanning up
     }
-    // Look forward: is there a following item at same level with no break?
     let hasNext = false;
     for (let j = i + 1; j < items.length; j++) {
-      if (levels[j] < level) break;      // a parent heading — stop, no sibling below
+      if (levels[j] < level) break;      // hit a parent, stop
       if (levels[j] === level) { hasNext = true; break; }
     }
     
@@ -635,6 +634,28 @@ function updateOutline(container) {
     else if (hasPrev && !hasNext) li.classList.add('outline-group-last');
     else if (!hasPrev && hasNext) li.classList.add('outline-group-first');
     else li.classList.add('outline-group-only');
+
+    // 2. Add passing-through guide lines for higher levels
+    // The outline levels typically go from 1 to 6.
+    for (let l = 1; l < level; l++) {
+      let lineHasPrev = false;
+      for (let j = i - 1; j >= 0; j--) {
+        if (levels[j] < l) break;
+        if (levels[j] === l) { lineHasPrev = true; break; }
+      }
+      let lineHasNext = false;
+      for (let j = i + 1; j < items.length; j++) {
+        if (levels[j] < l) break;
+        if (levels[j] === l) { lineHasNext = true; break; }
+      }
+      // If a heading of level `l` exists both before and after this item
+      // (without a smaller level interrupting), then a line for level `l` passes through here.
+      if (lineHasPrev && lineHasNext) {
+        const guide = document.createElement('div');
+        guide.className = `outline-guide-line outline-guide-${l}`;
+        li.appendChild(guide);
+      }
+    }
   });
 }
 
