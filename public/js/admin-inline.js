@@ -682,6 +682,8 @@
             if (targetContainer) {
               targetContainer.style.display = '';
               folderHeader?.querySelector('.folder-chevron')?.classList.add('open');
+              // Persist folder open so loadTree re-renders it open
+              if (typeof window.setFolderOpen === 'function') window.setFolderOpen(folder, true);
             }
           }
           if (!targetContainer) targetContainer = document.getElementById('fileTree');
@@ -702,6 +704,7 @@
           }
           toast('Note created!', 'success');
 
+          focusTitleOnEdit = true;
           currentNote = { path: notePath + '.md', title: rawName, visibility: vis, content: '' };
           if (typeof window.openNote === 'function') {
             await window.openNote(notePath + '.md');

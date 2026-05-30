@@ -1236,6 +1236,7 @@ body.theme-dark .login-page {
 .note-body ol {
   margin-left: 1.5rem;
   margin-bottom: 1rem;
+  font-family: var(--font-ui); /* Use Inter, not serif font */
 }
 
 .note-body ul {
@@ -1249,6 +1250,7 @@ body.theme-dark .login-page {
 .note-body li {
   margin-bottom: 0.35rem;
   line-height: 1.6;
+  font-family: var(--font-ui); /* Ensure nested items also use UI font */
 }
 
 .note-body p {
@@ -1939,9 +1941,62 @@ body.is-fullscreen .content-pane {
 mark.highlight {
   color: inherit;
   border-radius: 2px;
-  padding: 0 2px;
+  /* No padding to prevent baseline/text displacement */
   cursor: pointer;
   transition: background-color 0.2s;
+  /* Inline display to avoid layout shifts */
+  display: inline;
+  position: relative;
+  -webkit-box-decoration-break: clone;
+  box-decoration-break: clone;
+}
+
+/* Remove button inside highlight — hidden by default */
+.highlight-remove-btn {
+  display: none;
+  position: absolute;
+  top: -7px;
+  right: -7px;
+  width: 16px;
+  height: 16px;
+  background: var(--bg-secondary);
+  border: 1px solid var(--border-strong);
+  border-radius: 50%;
+  font-size: 10px;
+  line-height: 16px;
+  text-align: center;
+  cursor: pointer;
+  color: var(--text-normal);
+  font-style: normal;
+  font-weight: 700;
+  z-index: 10;
+  user-select: none;
+  transition: background 0.15s, color 0.15s;
+}
+
+.highlight-remove-btn:hover {
+  background: var(--primary-red) !important;
+  color: #fff !important;
+  border-color: var(--primary-red) !important;
+}
+
+/* Show remove button on desktop hover or mobile touch */
+mark.highlight:hover .highlight-remove-btn {
+  display: block;
+}
+
+/* On mobile: show on click via .highlight-active class */
+mark.highlight.highlight-active .highlight-remove-btn {
+  display: block;
+}
+
+@media (hover: none) {
+  mark.highlight:hover .highlight-remove-btn {
+    display: none;
+  }
+  mark.highlight.highlight-active .highlight-remove-btn {
+    display: block;
+  }
 }
 
 mark.highlight, mark.highlight.yellow {
@@ -2435,16 +2490,19 @@ body.theme-dark {
   --primary-purple: hsla(242,56%, 72%, 1);
 }
 
-/* ─── Outline Hierarchy Lines ───────────────────────────────────────────────── */
+/* ─── Outline Hierarchy — Reddit-thread style ───────────────────────────────── */
 /*
-  Obsidian-style tree:
-  • Vertical guide lines per indentation level
-  • Horizontal branch ticks connecting sibling items
-  • Same-level items share the same vertical line
+  Same-level items (h1s together, h2s together, etc.) share ONE vertical line.
+  The line only runs through the group of siblings:
+  - First in group: line from center → down
+  - Middle of group: full height
+  - Last in group: line from top → center
+  - Single item: no vertical line (uses ::before for horizontal tick only)
 */
 .outline-list {
   padding-left: 0;
   position: relative;
+  list-style: none;
 }
 .outline-list .outline-item {
   position: relative;
@@ -2460,55 +2518,19 @@ body.theme-dark {
 }
 
 /* Level 2 — first indent */
-.outline-link.outline-level-2 {
-  padding-left: 20px;
-  font-size: .83rem;
-}
+.outline-link.outline-level-2 { padding-left: 20px; font-size: .83rem; }
 
 /* Level 3 */
-.outline-link.outline-level-3 {
-  padding-left: 36px;
-  font-size: .80rem;
-}
+.outline-link.outline-level-3 { padding-left: 36px; font-size: .80rem; }
 
 /* Level 4 */
-.outline-link.outline-level-4 {
-  padding-left: 52px;
-  font-size: .77rem;
-  color: var(--text-muted);
-}
+.outline-link.outline-level-4 { padding-left: 52px; font-size: .77rem; color: var(--text-muted); }
 
 /* Level 5+ */
 .outline-link.outline-level-5,
-.outline-link.outline-level-6 {
-  padding-left: 66px;
-  font-size: .75rem;
-  color: var(--text-faint);
-}
+.outline-link.outline-level-6 { padding-left: 66px; font-size: .75rem; color: var(--text-faint); }
 
-/* Vertical guide line — runs in the left gutter */
-.outline-link.outline-level-2::before,
-.outline-link.outline-level-3::before,
-.outline-link.outline-level-4::before,
-.outline-link.outline-level-5::before,
-.outline-link.outline-level-6::before {
-  content: '';
-  position: absolute;
-  left: 7px;
-  top: 0;
-  bottom: 0;
-  width: 1px;
-  background: var(--border);
-  pointer-events: none;
-}
-
-/* For deeper levels, stack guide lines */
-.outline-link.outline-level-3::before  { left: 7px; }
-.outline-link.outline-level-4::before  { left: 23px; }
-.outline-link.outline-level-5::before  { left: 39px; }
-.outline-link.outline-level-6::before  { left: 55px; }
-
-/* Horizontal branch tick */
+/* ── Horizontal branch ticks (always shown for indented levels) ── */
 .outline-link.outline-level-2::after,
 .outline-link.outline-level-3::after,
 .outline-link.outline-level-4::after,
@@ -2517,6 +2539,7 @@ body.theme-dark {
   content: '';
   position: absolute;
   top: 50%;
+  transform: translateY(-50%);
   height: 1px;
   background: var(--border);
   pointer-events: none;
@@ -2525,6 +2548,45 @@ body.theme-dark {
 .outline-link.outline-level-3::after { left: 23px; width: 9px; }
 .outline-link.outline-level-4::after { left: 39px; width: 9px; }
 .outline-link.outline-level-5::after { left: 55px; width: 9px; }
+
+/* ── Vertical lines — only for items in a group of 2+ ── */
+/* Shared base style for all group members that need vertical lines */
+.outline-item.outline-group-first .outline-link.outline-level-2::before,
+.outline-item.outline-group-middle .outline-link.outline-level-2::before,
+.outline-item.outline-group-last .outline-link.outline-level-2::before,
+.outline-item.outline-group-first .outline-link.outline-level-3::before,
+.outline-item.outline-group-middle .outline-link.outline-level-3::before,
+.outline-item.outline-group-last .outline-link.outline-level-3::before,
+.outline-item.outline-group-first .outline-link.outline-level-4::before,
+.outline-item.outline-group-middle .outline-link.outline-level-4::before,
+.outline-item.outline-group-last .outline-link.outline-level-4::before,
+.outline-item.outline-group-first .outline-link.outline-level-5::before,
+.outline-item.outline-group-middle .outline-link.outline-level-5::before,
+.outline-item.outline-group-last .outline-link.outline-level-5::before {
+  content: '';
+  position: absolute;
+  width: 1px;
+  background: var(--border);
+  pointer-events: none;
+}
+
+/* First: line runs from vertical center downward */
+.outline-item.outline-group-first > .outline-link.outline-level-2::before { left: 7px;  top: 50%; bottom: 0; }
+.outline-item.outline-group-first > .outline-link.outline-level-3::before { left: 23px; top: 50%; bottom: 0; }
+.outline-item.outline-group-first > .outline-link.outline-level-4::before { left: 39px; top: 50%; bottom: 0; }
+.outline-item.outline-group-first > .outline-link.outline-level-5::before { left: 55px; top: 50%; bottom: 0; }
+
+/* Middle: full-height vertical line */
+.outline-item.outline-group-middle > .outline-link.outline-level-2::before { left: 7px;  top: 0; bottom: 0; }
+.outline-item.outline-group-middle > .outline-link.outline-level-3::before { left: 23px; top: 0; bottom: 0; }
+.outline-item.outline-group-middle > .outline-link.outline-level-4::before { left: 39px; top: 0; bottom: 0; }
+.outline-item.outline-group-middle > .outline-link.outline-level-5::before { left: 55px; top: 0; bottom: 0; }
+
+/* Last: line runs from top to vertical center */
+.outline-item.outline-group-last > .outline-link.outline-level-2::before { left: 7px;  top: 0; height: 50%; }
+.outline-item.outline-group-last > .outline-link.outline-level-3::before { left: 23px; top: 0; height: 50%; }
+.outline-item.outline-group-last > .outline-link.outline-level-4::before { left: 39px; top: 0; height: 50%; }
+.outline-item.outline-group-last > .outline-link.outline-level-5::before { left: 55px; top: 0; height: 50%; }
 
 /* ─── Admin Editor Pane ─────────────────────────────────────────────────────── */
 #adminEditorPane {
@@ -2606,4 +2668,210 @@ body.theme-dark {
 .btn-active-mode {
   color: var(--accent) !important;
   background: hsla(var(--accent-hsl, 25,95%,53%), .12) !important;
+}
+
+/* ─── Accent Color Theme Palettes ─────────────────────────────────────────── */
+/*
+  4 carefully curated palettes. Each overrides heading colours + accent.
+  Light mode gets slightly lighter / more saturated values.
+  Dark mode gets brighter / higher contrast variants.
+*/
+
+/* --- Terracotta (default Primary "red") --- */
+:root[data-accent="terracotta"],
+body[data-accent="terracotta"] {
+  --h1-color: hsl(4,  72%, 45%);
+  --h2-color: hsl(18, 69%, 42%);
+  --h3-color: hsl(35, 90%, 36%);
+  --h4-color: hsl(160,40%, 40%);
+  --h5-color: hsl(200,64%, 34%);
+  --h6-color: hsl(275,37%, 40%);
+  --accent: hsla(35, 85%, 42%, 1);
+  --accent-hover: hsla(35, 85%, 35%, 1);
+  --accent-bubble-color: #B0483D;
+}
+body.theme-dark[data-accent="terracotta"],
+body.theme-dark [data-accent="terracotta"] {
+  --h1-color: hsla(4,  86%, 68%, 1);
+  --h2-color: hsla(24, 84%, 63%, 1);
+  --h3-color: hsla(42, 82%, 62%, 1);
+  --h4-color: hsla(160,52%, 62%, 1);
+  --h5-color: hsla(194,62%, 62%, 1);
+  --h6-color: hsla(242,56%, 72%, 1);
+  --accent: hsla(42, 79%, 51%, 1);
+  --accent-hover: hsla(43, 83%, 57%, 1);
+}
+
+/* --- Sage (forest green) --- */
+body[data-accent="sage"] {
+  --h1-color: hsl(155, 42%, 32%);
+  --h2-color: hsl(160, 38%, 38%);
+  --h3-color: hsl(82,  32%, 40%);
+  --h4-color: hsl(170, 30%, 42%);
+  --h5-color: hsl(195, 40%, 37%);
+  --h6-color: hsl(200, 34%, 43%);
+  --accent: hsla(155, 42%, 38%, 1);
+  --accent-hover: hsla(155, 42%, 30%, 1);
+  --accent-bubble-color: #3E7D5E;
+}
+body.theme-dark[data-accent="sage"] {
+  --h1-color: hsla(152, 58%, 60%, 1);
+  --h2-color: hsla(160, 52%, 62%, 1);
+  --h3-color: hsla(80,  44%, 62%, 1);
+  --h4-color: hsla(168, 44%, 60%, 1);
+  --h5-color: hsla(194, 50%, 62%, 1);
+  --h6-color: hsla(200, 46%, 65%, 1);
+  --accent: hsla(152, 48%, 52%, 1);
+  --accent-hover: hsla(152, 48%, 60%, 1);
+}
+
+/* --- Slate (cool blue-grey) --- */
+body[data-accent="slate"] {
+  --h1-color: hsl(210, 52%, 35%);
+  --h2-color: hsl(200, 48%, 38%);
+  --h3-color: hsl(195, 42%, 42%);
+  --h4-color: hsl(218, 35%, 45%);
+  --h5-color: hsl(230, 32%, 50%);
+  --h6-color: hsl(250, 28%, 50%);
+  --accent: hsla(210, 52%, 40%, 1);
+  --accent-hover: hsla(210, 52%, 32%, 1);
+  --accent-bubble-color: #3B6080;
+}
+body.theme-dark[data-accent="slate"] {
+  --h1-color: hsla(210, 72%, 68%, 1);
+  --h2-color: hsla(200, 68%, 68%, 1);
+  --h3-color: hsla(195, 60%, 66%, 1);
+  --h4-color: hsla(218, 55%, 70%, 1);
+  --h5-color: hsla(230, 52%, 72%, 1);
+  --h6-color: hsla(250, 48%, 74%, 1);
+  --accent: hsla(210, 68%, 62%, 1);
+  --accent-hover: hsla(210, 68%, 70%, 1);
+}
+
+/* --- Amber (warm golden) --- */
+body[data-accent="amber"] {
+  --h1-color: hsl(22,  72%, 38%);
+  --h2-color: hsl(30,  70%, 40%);
+  --h3-color: hsl(40,  75%, 34%);
+  --h4-color: hsl(50,  60%, 36%);
+  --h5-color: hsl(28,  50%, 44%);
+  --h6-color: hsl(18,  45%, 48%);
+  --accent: hsla(38, 80%, 40%, 1);
+  --accent-hover: hsla(38, 80%, 32%, 1);
+  --accent-bubble-color: #9A6B1A;
+}
+body.theme-dark[data-accent="amber"] {
+  --h1-color: hsla(22,  90%, 65%, 1);
+  --h2-color: hsla(30,  88%, 65%, 1);
+  --h3-color: hsla(42,  86%, 64%, 1);
+  --h4-color: hsla(50,  78%, 62%, 1);
+  --h5-color: hsla(28,  72%, 64%, 1);
+  --h6-color: hsla(18,  65%, 67%, 1);
+  --accent: hsla(40, 80%, 55%, 1);
+  --accent-hover: hsla(40, 80%, 62%, 1);
+}
+
+/* ── Apply heading colour overrides from accent theme ── */
+body[data-accent] .note-body h1, body[data-accent] h1 { color: var(--h1-color, var(--primary-red)); }
+body[data-accent] .note-body h2, body[data-accent] h2 { color: var(--h2-color, var(--primary-orange)); }
+body[data-accent] .note-body h3, body[data-accent] h3 { color: var(--h3-color, var(--primary-yellow)); }
+body[data-accent] .note-body h4, body[data-accent] h4 { color: var(--h4-color, var(--primary-green)); }
+body[data-accent] .note-body h5, body[data-accent] h5 { color: var(--h5-color, var(--primary-blue)); }
+body[data-accent] .note-body h6, body[data-accent] h6 { color: var(--h6-color, var(--primary-purple)); }
+body[data-accent] em { color: var(--accent); }
+
+/* ─── Accent Color Picker UI ─────────────────────────────────────────────── */
+.accent-picker-wrap {
+  position: relative;
+  display: flex;
+  align-items: center;
+}
+
+.accent-picker-trigger {
+  background: transparent;
+  border: none;
+  cursor: pointer;
+  padding: 4px;
+  border-radius: 50%;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  transition: transform 0.15s ease;
+}
+.accent-picker-trigger:hover { transform: scale(1.1); }
+
+.accent-bubble {
+  display: block;
+  width: 18px;
+  height: 18px;
+  border-radius: 50%;
+  border: 2px solid var(--border-strong);
+  background: var(--accent-bubble-color, var(--accent));
+  transition: border-color 0.15s, box-shadow 0.15s;
+  box-shadow: 0 0 0 1px transparent;
+}
+.accent-picker-trigger:hover .accent-bubble,
+.accent-picker-trigger:focus .accent-bubble {
+  border-color: var(--accent);
+  box-shadow: 0 0 0 2px hsla(0,0%,50%,.2);
+}
+
+.accent-picker-dropdown {
+  position: absolute;
+  top: calc(100% + 8px);
+  right: -8px;
+  z-index: 1100;
+  background: var(--bg-primary);
+  border: 1px solid var(--border);
+  border-radius: var(--radius-md);
+  box-shadow: var(--shadow-lg);
+  padding: 10px;
+  min-width: 160px;
+  animation: fadeIn .15s ease;
+}
+.accent-picker-dropdown.hidden { display: none; }
+
+.accent-picker-label {
+  font-family: var(--font-ui);
+  font-size: 0.7rem;
+  font-weight: 700;
+  color: var(--text-faint);
+  text-transform: uppercase;
+  letter-spacing: 0.06em;
+  margin-bottom: 8px;
+  padding: 0 2px;
+}
+
+.accent-options {
+  display: flex;
+  flex-direction: column;
+  gap: 4px;
+}
+
+.accent-option {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  padding: 6px 8px;
+  border: none;
+  background: transparent;
+  border-radius: var(--radius-sm);
+  cursor: pointer;
+  font-family: var(--font-ui);
+  font-size: 0.8rem;
+  color: var(--text-normal);
+  text-align: left;
+  transition: background 0.12s;
+  width: 100%;
+}
+.accent-option:hover { background: var(--bg-hover); }
+.accent-option.active { background: var(--bg-active); font-weight: 600; }
+
+.accent-swatch {
+  display: block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  flex-shrink: 0;
+  border: 1px solid hsla(0,0%,0%,.15);
 }

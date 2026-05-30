@@ -159,6 +159,35 @@
         </div>
 
         <div class="topbar-sep desktop-sep"></div>
+
+        <!-- Accent Color Picker -->
+        <div class="accent-picker-wrap" id="accentPickerWrap">
+          <button class="accent-picker-trigger" id="accentPickerTrigger" title="Change accent color theme">
+            <span class="accent-bubble" id="accentBubble"></span>
+          </button>
+          <div class="accent-picker-dropdown hidden" id="accentPickerDropdown">
+            <div class="accent-picker-label">Accent Theme</div>
+            <div class="accent-options">
+              <button class="accent-option" data-accent="terracotta" title="Terracotta — warm clay red">
+                <span class="accent-swatch" style="background: #B0483D"></span>
+                <span>Terracotta</span>
+              </button>
+              <button class="accent-option" data-accent="sage" title="Sage — forest green">
+                <span class="accent-swatch" style="background: #3E7D5E"></span>
+                <span>Sage</span>
+              </button>
+              <button class="accent-option" data-accent="slate" title="Slate — cool blue-grey">
+                <span class="accent-swatch" style="background: #3B6080"></span>
+                <span>Slate</span>
+              </button>
+              <button class="accent-option" data-accent="amber" title="Amber — warm golden">
+                <span class="accent-swatch" style="background: #9A6B1A"></span>
+                <span>Amber</span>
+              </button>
+            </div>
+          </div>
+        </div>
+
         <button class="btn-icon theme-toggle" id="toggleThemeTopbar" title="Toggle theme"><i data-lucide="sun"></i></button>
         <div class="topbar-sep"></div>
         <button class="btn-icon" id="fullscreenBtn" title="Toggle fullscreen"><i data-lucide="maximize"></i></button>
