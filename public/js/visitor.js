@@ -33,7 +33,6 @@ document.addEventListener('DOMContentLoaded', () => {
   }
 
   applyTheme();
-  initAccentPicker(); // Must be after applyTheme so the bubble color is set
   loadTree().then(() => {
     const pathMatch = window.location.pathname.match(/^\/note\/(.+)$/);
     if (pathMatch) {
@@ -48,7 +47,6 @@ document.addEventListener('DOMContentLoaded', () => {
       isDark = !isDark;
       localStorage.setItem('theme', isDark ? 'dark' : 'light');
       applyTheme();
-      updateAccentBubble(); // refresh bubble color after theme changes
     });
   });
 
@@ -326,25 +324,6 @@ function buildNode(node) {
   return buildNoteNode(node);
 }
 
-// ─── Folder State Persistence ─────────────────────────────────────────────────
-const FOLDER_STATE_KEY = 'folderOpenState';
-
-function getFolderOpenState() {
-  try { return JSON.parse(localStorage.getItem(FOLDER_STATE_KEY)) || {}; } catch { return {}; }
-}
-window.getFolderOpenState = getFolderOpenState;
-
-function setFolderOpen(folderPath, isOpen) {
-  const state = getFolderOpenState();
-  if (isOpen) {
-    state[folderPath] = true;
-  } else {
-    delete state[folderPath];
-  }
-  localStorage.setItem(FOLDER_STATE_KEY, JSON.stringify(state));
-}
-window.setFolderOpen = setFolderOpen;
-
 function buildFolderNode(folder) {
   const el = document.createElement('div');
   el.className = 'tree-folder slide-in';
@@ -352,27 +331,16 @@ function buildFolderNode(folder) {
   const header = document.createElement('div');
   header.className = 'tree-folder-header';
   if (folder.path) header.dataset.path = folder.path;
-  
-  // Restore saved open state — closed by default unless previously opened
-  const savedState = getFolderOpenState();
-  const isOpenDefault = savedState[folder.path] === true;
-  
   header.innerHTML = `
     <span class="drag-grip" style="display:none; cursor:grab; opacity:0; transition:opacity 0.2s; margin-left:-4px; margin-right:4px; align-items:center"><i data-lucide="grip-vertical" style="width:12px;height:12px;"></i></span>
-    <span class="folder-chevron ${isOpenDefault ? 'open' : ''}"><i data-lucide="chevron-right" style="width:12px;height:12px;"></i></span>
-    <span class="folder-icon"><i data-lucide="${isOpenDefault ? 'folder-open' : 'folder'}" style="width:14px;height:14px;"></i></span>
+    <span class="folder-chevron open"><i data-lucide="chevron-right" style="width:12px;height:12px;"></i></span>
+    <span class="folder-icon"><i data-lucide="folder" style="width:14px;height:14px;"></i></span>
     <span class="folder-name" title="${esc(folder.name)}">${esc(folder.name)}</span>
     ${noteCount > 0 ? `<span class="folder-badge">${noteCount}</span>` : ''}
   `;
   const children = document.createElement('div');
   children.className = 'tree-folder-children';
   (folder.children || []).forEach(c => children.appendChild(buildNode(c)));
-  
-  // Apply saved closed state
-  if (!isOpenDefault) {
-    children.style.display = 'none';
-  }
-  
   header.addEventListener('click', () => {
     const ch = header.querySelector('.folder-chevron');
     const isOpen = ch.classList.toggle('open');
@@ -380,8 +348,6 @@ function buildFolderNode(folder) {
     const iconSpan = header.querySelector('.folder-icon');
     iconSpan.innerHTML = `<i data-lucide="${isOpen ? 'folder-open' : 'folder'}" style="width:14px;height:14px;"></i>`;
     if (window.lucide) window.lucide.createIcons({ root: iconSpan });
-    // Persist the state
-    if (folder.path) setFolderOpen(folder.path, isOpen);
   });
   el.appendChild(header);
   el.appendChild(children);
@@ -576,25 +542,14 @@ function updateOutline(container) {
   }
   outlinePane.classList.remove('hidden');
   outlineList.innerHTML = '';
-  
-  // Track outline items per level for connecting same-level items with a single vertical line
-  const levelGroups = {}; // level -> array of li elements
-  
   headings.forEach(h => {
     const level = parseInt(h.tagName.substring(1));
     const li = document.createElement('li');
     li.className = 'outline-item';
-    li.dataset.level = level;
     const a = document.createElement('a');
     a.className = `outline-link outline-level-${level}`;
     a.href = `#${h.id}`;
-    // Strip flowchart button text from heading text
-    let headingText = '';
-    for (const child of h.childNodes) {
-      if (child.nodeType === Node.TEXT_NODE) headingText += child.textContent;
-      else if (child.nodeType === Node.ELEMENT_NODE && !child.classList.contains('heading-flowchart-btn')) headingText += child.textContent;
-    }
-    a.textContent = headingText.trim();
+    a.textContent = h.textContent;
     a.addEventListener('click', e => {
       e.preventDefault();
       h.scrollIntoView({ behavior: 'smooth' });
@@ -604,58 +559,6 @@ function updateOutline(container) {
     });
     li.appendChild(a);
     outlineList.appendChild(li);
-    
-    if (!levelGroups[level]) levelGroups[level] = [];
-    levelGroups[level].push(li);
-  });
-  
-  // ── Compute proper sibling groups & vertical guide lines ──
-  // For each outline item, we need to draw vertical lines for any parent levels
-  // that are currently "passing through" (i.e. have siblings spanning across this item).
-  const items = Array.from(outlineList.querySelectorAll('.outline-item'));
-  const levels = items.map(li => parseInt(li.dataset.level));
-  
-  items.forEach((li, i) => {
-    const level = levels[i];
-    
-    // 1. Mark this item's own sibling relationship (first, middle, last, only)
-    let hasPrev = false;
-    for (let j = i - 1; j >= 0; j--) {
-      if (levels[j] < level) break;      // hit a parent, stop
-      if (levels[j] === level) { hasPrev = true; break; }
-    }
-    let hasNext = false;
-    for (let j = i + 1; j < items.length; j++) {
-      if (levels[j] < level) break;      // hit a parent, stop
-      if (levels[j] === level) { hasNext = true; break; }
-    }
-    
-    if (hasPrev && hasNext) li.classList.add('outline-group-middle');
-    else if (hasPrev && !hasNext) li.classList.add('outline-group-last');
-    else if (!hasPrev && hasNext) li.classList.add('outline-group-first');
-    else li.classList.add('outline-group-only');
-
-    // 2. Add passing-through guide lines for higher levels
-    // The outline levels typically go from 1 to 6.
-    for (let l = 1; l < level; l++) {
-      let lineHasPrev = false;
-      for (let j = i - 1; j >= 0; j--) {
-        if (levels[j] < l) break;
-        if (levels[j] === l) { lineHasPrev = true; break; }
-      }
-      let lineHasNext = false;
-      for (let j = i + 1; j < items.length; j++) {
-        if (levels[j] < l) break;
-        if (levels[j] === l) { lineHasNext = true; break; }
-      }
-      // If a heading of level `l` exists both before and after this item
-      // (without a smaller level interrupting), then a line for level `l` passes through here.
-      if (lineHasPrev && lineHasNext) {
-        const guide = document.createElement('div');
-        guide.className = `outline-guide-line outline-guide-${l}`;
-        li.appendChild(guide);
-      }
-    }
   });
 }
 
@@ -891,22 +794,19 @@ function toggleFlowchart(clickedHeading, container) {
   body.querySelectorAll('.flowchart-node').forEach(nodeEl => {
     nodeEl.addEventListener('click', (e) => {
       const idx = nodeEl.getAttribute('data-heading-index');
-      // Find heading by data-heading-index — assigned by initHeadingFlowcharts
-      const allHeadings = container.querySelectorAll('h1, h2, h3, h4, h5, h6');
-      const targetHeading = Array.from(allHeadings).find(h => h.getAttribute('data-heading-index') === idx);
+      const targetHeading = container.querySelector(`[data-heading-index="${idx}"]`);
       if (targetHeading) {
         nodeEl.style.transform = 'scale(0.95)';
         setTimeout(() => nodeEl.style.transform = '', 150);
         
         const pane = document.getElementById('contentPane');
         if (pane) {
-          // Force the flowchart to close first so the heading is visible
           const paneRect = pane.getBoundingClientRect();
           const targetRect = targetHeading.getBoundingClientRect();
           const relativeTop = targetRect.top - paneRect.top + pane.scrollTop;
-          const yOffset = -80; // extra offset for the fixed topbar
+          const yOffset = -20; // 20px padding from top
           pane.scrollTo({
-            top: Math.max(0, relativeTop + yOffset),
+            top: relativeTop + yOffset,
             behavior: 'smooth'
           });
         }
@@ -1241,77 +1141,3 @@ function initTreeNodeCollapsing(flowchartBody) {
     });
   });
 }
-
-// ─── Accent Color Picker ──────────────────────────────────────────────────────
-const ACCENT_PALETTES = {
-  terracotta: { light: '#B0483D', dark: '#C86D62' },
-  sage:       { light: '#3E7D5E', dark: '#5FA882' },
-  slate:      { light: '#3B6080', dark: '#6A9DC0' },
-  amber:      { light: '#9A6B1A', dark: '#D4971F' },
-};
-
-function updateAccentBubble() {
-  const accent = document.body.getAttribute('data-accent') || 'terracotta';
-  const bubble = document.getElementById('accentBubble');
-  if (!bubble) return;
-  const palette = ACCENT_PALETTES[accent];
-  if (palette) {
-    bubble.style.background = isDark ? palette.dark : palette.light;
-  }
-  // Update active button
-  document.querySelectorAll('.accent-option').forEach(btn => {
-    btn.classList.toggle('active', btn.dataset.accent === accent);
-  });
-}
-
-function applyAccentTheme(accent) {
-  document.body.setAttribute('data-accent', accent);
-  localStorage.setItem('accentTheme', accent);
-  updateAccentBubble();
-}
-
-function initAccentPicker() {
-  // Restore saved accent
-  const saved = localStorage.getItem('accentTheme') || 'terracotta';
-  applyAccentTheme(saved);
-
-  const trigger = document.getElementById('accentPickerTrigger');
-  const dropdown = document.getElementById('accentPickerDropdown');
-  if (!trigger || !dropdown) return;
-
-  trigger.addEventListener('click', (e) => {
-    e.stopPropagation();
-    dropdown.classList.toggle('hidden');
-  });
-
-  dropdown.querySelectorAll('.accent-option').forEach(btn => {
-    btn.addEventListener('click', (e) => {
-      e.stopPropagation();
-      applyAccentTheme(btn.dataset.accent);
-      dropdown.classList.add('hidden');
-    });
-  });
-
-  // Close on outside click
-  document.addEventListener('click', (e) => {
-    if (!document.getElementById('accentPickerWrap')?.contains(e.target)) {
-      dropdown.classList.add('hidden');
-    }
-  });
-}
-
-// ─── Mobile Highlight Touch Support ──────────────────────────────────────────
-// On touch devices: tap a highlight to show the remove button
-document.addEventListener('click', (e) => {
-  const mark = e.target.closest('mark.highlight');
-  if (mark) {
-    // Toggle active (shows remove btn) on touch devices
-    const wasActive = mark.classList.contains('highlight-active');
-    // Deactivate all others first
-    document.querySelectorAll('mark.highlight.highlight-active').forEach(m => m.classList.remove('highlight-active'));
-    if (!wasActive) mark.classList.add('highlight-active');
-  } else if (!e.target.closest('.highlight-remove-btn')) {
-    // Clicking elsewhere deactivates highlights
-    document.querySelectorAll('mark.highlight.highlight-active').forEach(m => m.classList.remove('highlight-active'));
-  }
-});

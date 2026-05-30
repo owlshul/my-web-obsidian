@@ -682,8 +682,6 @@
             if (targetContainer) {
               targetContainer.style.display = '';
               folderHeader?.querySelector('.folder-chevron')?.classList.add('open');
-              // Persist folder open so loadTree re-renders it open
-              if (typeof window.setFolderOpen === 'function') window.setFolderOpen(folder, true);
             }
           }
           if (!targetContainer) targetContainer = document.getElementById('fileTree');
@@ -692,61 +690,27 @@
         }
 
         try {
-          // Lock tree reloads BEFORE the POST — server emits SSE immediately
-          // after writing the file, and we don't want it to clobber the optimistic UI
-          dbWriteLock = true;
-          clearTimeout(dbWriteTimeout);
-
           const res = await fetch('/api/note', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ path: notePath, title: rawName, visibility: vis, content: '' }),
           });
-          if (!res.ok) {
-            dbWriteLock = false;
+          if (!res.ok) { 
             if (noteNode) noteNode.remove();
-            toast('Failed to create note', 'error');
-            return;
+            toast('Failed to create note', 'error'); 
+            return; 
           }
           toast('Note created!', 'success');
 
-          focusTitleOnEdit = true;
           currentNote = { path: notePath + '.md', title: rawName, visibility: vis, content: '' };
-
-          // Update sidebar active state directly (don't call openNote to avoid race)
-          const fullPath = notePath + '.md';
-          document.querySelectorAll('.tree-note').forEach(el => {
-            el.classList.toggle('active', el.dataset.path === fullPath);
-          });
-          const urlPath = '/note/' + notePath;
-          window.history.pushState({}, '', urlPath);
-          document.title = `${rawName} — My Notes`;
-
-          // Open editor directly with empty content
-          if (!isEditMode) {
-            isEditMode = true;
-            refreshToggleBtn();
-            enterEditMode();
-          } else {
-            // Already in edit mode, just swap content
-            if (editorTextarea) {
-              editorTextarea.value = '';
-              autoResize(editorTextarea);
-            }
-            updateEditorHeader(currentNote);
+          if (typeof window.openNote === 'function') {
+            await window.openNote(notePath + '.md');
+            if (!isEditMode) toggleEditMode();
           }
-          // Hide content pane, show editor title
-          const cp = document.getElementById('contentPane');
-          if (cp) cp.style.display = 'none';
 
-          // Release the lock and do one clean tree reload after a short delay
-          dbWriteTimeout = setTimeout(() => {
-            dbWriteLock = false;
-            if (typeof window.loadTree === 'function') window.loadTree();
-          }, 1200);
+          triggerDbWriteSync();
         } catch (err) {
           console.error(err);
-          dbWriteLock = false;
           if (noteNode) noteNode.remove();
           toast('Failed to create note', 'error');
         }
@@ -784,58 +748,29 @@
     }
 
     try {
-      // Lock tree reloads BEFORE the POST — server emits SSE immediately
-      dbWriteLock = true;
-      clearTimeout(dbWriteTimeout);
-
       const res = await fetch('/api/note', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ path: notePath, title: rawName, visibility: vis, content: '' }),
       });
-      if (!res.ok) {
-        dbWriteLock = false;
+      if (!res.ok) { 
         if (noteNode) noteNode.remove();
-        toast('Failed to create note', 'error');
-        return;
+        toast('Failed to create note', 'error'); 
+        return; 
       }
       toast('Note created!', 'success');
 
       focusTitleOnEdit = true;
+
       currentNote = { path: notePath + '.md', title: rawName, visibility: vis, content: '' };
-
-      // Update sidebar active state directly (don't call openNote to avoid race)
-      const fullPath = notePath + '.md';
-      document.querySelectorAll('.tree-note').forEach(el => {
-        el.classList.toggle('active', el.dataset.path === fullPath);
-      });
-      const urlPath = '/note/' + notePath;
-      window.history.pushState({}, '', urlPath);
-      document.title = `${rawName} — My Notes`;
-
-      // Open editor directly with empty content
-      if (!isEditMode) {
-        isEditMode = true;
-        refreshToggleBtn();
-        enterEditMode();
-      } else {
-        if (editorTextarea) {
-          editorTextarea.value = '';
-          autoResize(editorTextarea);
-        }
-        updateEditorHeader(currentNote);
+      if (typeof window.openNote === 'function') {
+        await window.openNote(notePath + '.md');
+        if (!isEditMode) toggleEditMode();
       }
-      const cp = document.getElementById('contentPane');
-      if (cp) cp.style.display = 'none';
 
-      // Release lock and do one clean reload
-      dbWriteTimeout = setTimeout(() => {
-        dbWriteLock = false;
-        if (typeof window.loadTree === 'function') window.loadTree();
-      }, 1200);
+      triggerDbWriteSync();
     } catch (err) {
       console.error(err);
-      dbWriteLock = false;
       if (noteNode) noteNode.remove();
       toast('Failed to create note', 'error');
     }

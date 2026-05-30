@@ -423,6 +423,13 @@ window.HighlightsManager = (function() {
       range.setStart(startNode, startNodeOffset);
       range.setEnd(endNode, endNodeOffset);
       
+      // Because a highlight might span multiple elements (like across a bold tag),
+      // we must wrap it carefully. document.execCommand('hiliteColor') is deprecated.
+      // A robust way to wrap a range that spans nodes is to use CSS Custom Highlights API
+      // if available, but for wider support we manually wrap or use a trick.
+      // Since wrapping across boundaries is hard, we'll extract the contents and wrap text nodes.
+      
+      // Simpler robust method: wrap each text node in the range individually.
       const nodesToWrap = [];
       const extractWalker = document.createTreeWalker(range.commonAncestorContainer, NodeFilter.SHOW_TEXT, null, false);
       
@@ -457,18 +464,11 @@ window.HighlightsManager = (function() {
         mark.dataset.id = highlight.id;
         mark.textContent = textToWrap;
         
-        // Add delete button (shown on hover desktop / click mobile)
-        const removeBtn = document.createElement('span');
-        removeBtn.className = 'highlight-remove-btn';
-        removeBtn.innerHTML = '\u00d7'; // ×
-        removeBtn.title = 'Remove highlight';
-        removeBtn.addEventListener('click', (e) => {
+        // Add click listener to scroll
+        mark.addEventListener('click', (e) => {
           e.stopPropagation();
-          e.preventDefault();
-          removeHighlightById(highlight.id);
+          // Optional: we could show a tooltip to delete it
         });
-        removeBtn.addEventListener('mousedown', (e) => e.preventDefault()); // Don't lose selection
-        mark.appendChild(removeBtn);
         
         fragment.appendChild(mark);
         if (afterText) fragment.appendChild(document.createTextNode(afterText));
@@ -479,36 +479,6 @@ window.HighlightsManager = (function() {
     } catch (e) {
       console.warn("Failed to apply highlight visually. Text may have changed.", e);
     }
-  }
-
-  function removeHighlightById(id) {
-    if (!currentNotePath) return;
-    // Remove from DOM
-    if (currentNoteBody) {
-      const marks = currentNoteBody.querySelectorAll(`mark[data-id="${id}"]`);
-      marks.forEach(mark => {
-        const parent = mark.parentNode;
-        // Extract only text content, not the remove button
-        const textParts = [];
-        for (const child of mark.childNodes) {
-          if (child.nodeType === Node.TEXT_NODE) {
-            textParts.push(child.textContent);
-          } else if (child.nodeType === Node.ELEMENT_NODE && !child.classList.contains('highlight-remove-btn')) {
-            textParts.push(child.textContent);
-          }
-        }
-        parent.replaceChild(document.createTextNode(textParts.join('')), mark);
-        parent.normalize();
-      });
-    }
-    // Remove from storage
-    const data = getHighlights();
-    if (data[currentNotePath]) {
-      data[currentNotePath] = data[currentNotePath].filter(h => h.id !== id);
-      if (data[currentNotePath].length === 0) delete data[currentNotePath];
-      saveHighlights(data);
-    }
-    renderSidebar();
   }
 
   function onNoteLoaded(bodyElement, path) {
