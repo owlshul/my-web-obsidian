@@ -292,8 +292,8 @@ body.theme-dark .callout-warning, body.theme-dark .callout-caution { background:
 body.theme-dark .callout-danger, body.theme-dark .callout-important, body.theme-dark .callout-error { background: hsla(4,88%,61%,.10); border-color: var(--primary-red); }
 
 /* ─── Lists ──────────────────────────────────────────────────────────────── */
-ul, ol { padding-left: 1.5rem; margin-bottom: 1rem; font-family: var(--font-ui); }
-li { margin-bottom: .3rem; font-family: var(--font-ui); }
+ul, ol { padding-left: 1.5rem; margin-bottom: 1rem; font-family: var(--font-text); }
+li { margin-bottom: .3rem; }
 li > ul, li > ol { margin-top: .25rem; margin-bottom: 0; }
 
 /* List markers in Primary accent color */

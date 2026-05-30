@@ -1236,7 +1236,6 @@ body.theme-dark .login-page {
 .note-body ol {
   margin-left: 1.5rem;
   margin-bottom: 1rem;
-  font-family: var(--font-ui); /* Use Inter, not serif font */
 }
 
 .note-body ul {
@@ -1250,7 +1249,6 @@ body.theme-dark .login-page {
 .note-body li {
   margin-bottom: 0.35rem;
   line-height: 1.6;
-  font-family: var(--font-ui); /* Ensure nested items also use UI font */
 }
 
 .note-body p {

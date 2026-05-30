@@ -609,15 +609,32 @@ function updateOutline(container) {
     levelGroups[level].push(li);
   });
   
-  // Mark same-level groups: first, middle, last — for CSS line rendering
-  Object.values(levelGroups).forEach(group => {
-    if (group.length > 1) {
-      group[0].classList.add('outline-group-first');
-      group[group.length - 1].classList.add('outline-group-last');
-      group.slice(1, -1).forEach(li => li.classList.add('outline-group-middle'));
-    } else {
-      group[0].classList.add('outline-group-only');
+  // ── Compute proper sibling groups ──
+  // Two headings of the same level are siblings only if NO heading of
+  // equal-or-lesser level appears between them in the DOM order.
+  const items = Array.from(outlineList.querySelectorAll('.outline-item'));
+  const levels = items.map(li => parseInt(li.dataset.level));
+  
+  items.forEach((li, i) => {
+    const level = levels[i];
+    // Look backward: is there a preceding item at same level with no equal-level break between?
+    let hasPrev = false;
+    for (let j = i - 1; j >= 0; j--) {
+      if (levels[j] < level) break;      // a parent heading — stop, no sibling above
+      if (levels[j] === level) { hasPrev = true; break; }
+      // levels[j] > level means deeper heading — keep scanning up
     }
+    // Look forward: is there a following item at same level with no break?
+    let hasNext = false;
+    for (let j = i + 1; j < items.length; j++) {
+      if (levels[j] < level) break;      // a parent heading — stop, no sibling below
+      if (levels[j] === level) { hasNext = true; break; }
+    }
+    
+    if (hasPrev && hasNext) li.classList.add('outline-group-middle');
+    else if (hasPrev && !hasNext) li.classList.add('outline-group-last');
+    else if (!hasPrev && hasNext) li.classList.add('outline-group-first');
+    else li.classList.add('outline-group-only');
   });
 }
 
